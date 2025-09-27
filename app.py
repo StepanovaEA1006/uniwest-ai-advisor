@@ -107,7 +107,6 @@ def login_page():
     </div>
     """, unsafe_allow_html=True)
 
-# ОСТАЛЬНЫЕ ФУНКЦИИ ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ
 def create_portfolio_metrics(client_data, portfolio_dict):
     """Создает метрики для портфеля"""
     portfolio_type = client_data['portfolio_type']
@@ -202,6 +201,20 @@ def dashboard_page():
             font-weight: bold;
         }
         
+        /* Светлая кнопка "Выйти" с черным текстом */
+        div.stButton > button[kind="secondary"] {
+            background-color: #f8f9fa !important;
+            color: #000000 !important;
+            border: 1px solid #dee2e6 !important;
+            font-weight: 500;
+        }
+        
+        div.stButton > button[kind="secondary"]:hover {
+            background-color: #e9ecef !important;
+            border-color: #adb5bd !important;
+            color: #000000 !important;
+        }
+        
         /* Карточки с белым фоном и черным текстом */
         .client-card {
             background: #ffffff !important;
@@ -279,7 +292,7 @@ def dashboard_page():
         st.markdown(f'<div class="user-info">👤 <strong>{current_client}</strong></div>', unsafe_allow_html=True)
     
     with col3:
-        if st.button("🚪 Выйти", use_container_width=True):
+        if st.button("🚪 Выйти", use_container_width=True, type="secondary"):
             st.session_state.authenticated = False
             st.session_state.current_user = None
             st.session_state.page = "login"
