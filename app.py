@@ -181,43 +181,75 @@ def create_growth_chart(client_data, portfolio_type, current_client):
 def dashboard_page():
     """Основная панель управления"""
     
-    # Заголовок приложения
+    # Заголовок приложения - ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ ЛУЧШЕЙ ЧИТАЕМОСТИ
     st.markdown("""
     <style>
+        /* Белый фон для всего приложения */
+        .stApp {
+            background-color: #ffffff !important;
+        }
+        
+        /* Черный текст везде для лучшей читаемости */
+        body, p, div, h1, h2, h3, h4, h5, h6, span, li, strong, em {
+            color: #000000 !important;
+        }
+        
         .main-header {
             font-size: 2.5rem;
-            color: #1f77b4;
+            color: #1f77b4 !important;
             text-align: center;
             margin-bottom: 1rem;
             font-weight: bold;
         }
+        
+        /* Карточки с белым фоном и черным текстом */
         .client-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #ffffff !important;
+            color: #000000 !important;
             padding: 2rem;
             border-radius: 15px;
             margin: 1rem 0;
+            border: 2px solid #1f77b4;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
+        
         .metric-card {
-            background: #f0f2f6;
+            background: #f8f9fa !important;
+            color: #000000 !important;
             padding: 1rem;
             border-radius: 10px;
             border-left: 4px solid #1f77b4;
             margin: 0.5rem 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
+        
         .user-info {
-            background: #e3f2fd;
+            background: #f8f9fa !important;
+            color: #000000 !important;
             padding: 1rem;
             border-radius: 10px;
             margin: 0.5rem 0;
-            border: 1px solid #bbdefb;
+            border: 1px solid #dee2e6;
         }
+        
         .recommendation-card {
-            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            background: #f8f9fa !important;
+            color: #000000 !important;
             padding: 1rem;
             border-radius: 10px;
             margin: 0.5rem 0;
-            border-left: 4px solid #ff6b6b;
+            border-left: 4px solid #28a745;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Улучшаем читаемость sidebar */
+        .css-1d391kg {
+            background-color: #f8f9fa !important;
+        }
+        
+        /* Убираем градиентные фоны */
+        [style*="gradient"] {
+            background: #ffffff !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -508,7 +540,7 @@ def dashboard_page():
     # Футер
     st.markdown("---")
     st.markdown("""
-    <div style='text-align: center; color: gray;'>
+    <div style='text-align: center; color: #666;'>
         <p>🤖 ЮниВест AI Советник | Мульти-пользовательская инвестиционная платформа</p>
         <p>💼 Инвестиционные рекомендации не являются гарантией доходности</p>
         <p>📊 Данные обновлены: {}</p>
