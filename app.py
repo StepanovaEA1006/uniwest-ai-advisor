@@ -362,25 +362,18 @@ def create_tooltip(metric_name: str) -> str:
     '''
 
 def display_metric_with_tooltip(label: str, value: str, metric_name: str, help_text: str = None):
-    """Отображает метрику с tooltip'ом"""
+    """Отображает метрику с tooltip'ом - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ ЛИШНИХ ОКОШЕК"""
     col1, col2 = st.columns([4, 1])
     
     with col1:
         st.metric(label, value)
     
     with col2:
-        if help_text:
-            st.markdown(f"""
-            <div style="margin-top: 1.5rem;">
-                {create_tooltip(metric_name)}
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div style="margin-top: 1.5rem;">
-                {create_tooltip(metric_name)}
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style="margin-top: 1.5rem;">
+            {create_tooltip(metric_name)}
+        </div>
+        """, unsafe_allow_html=True)
 
 def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
     """Улучшенное отображение анализа с разными уровнями доступа"""
@@ -435,41 +428,6 @@ def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
             f"{metrics.get('beta', 0):.2f}", 
             'beta'
         )
-    
-    # ПРОДВИНУТЫЕ МЕТРИКИ ЭФФЕКТИВНОСТИ
-    efficiency_metrics = results.get('efficiency_metrics', {})
-    if efficiency_metrics and subscription_level in ['advanced', 'premium']:
-        st.subheader("🎯 Продвинутые метрики эффективности")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            display_metric_with_tooltip(
-                "Коэф. Сортино", 
-                f"{efficiency_metrics.get('sortino_ratio', 0):.2f}", 
-                'sortino_ratio'
-            )
-        
-        with col2:
-            display_metric_with_tooltip(
-                "Коэф. Трейнора", 
-                f"{efficiency_metrics.get('treynor_ratio', 0):.3f}", 
-                'treynor_ratio'
-            )
-        
-        with col3:
-            display_metric_with_tooltip(
-                "М-квадрат", 
-                f"{efficiency_metrics.get('m_squared', 0):.3f}", 
-                'm_squared'
-            )
-        
-        with col4:
-            display_metric_with_tooltip(
-                "Альфа Дженсена", 
-                f"{efficiency_metrics.get('jensen_alpha', 0):.3f}", 
-                'jensen_alpha'
-            )
 
 def display_advanced_risk_analysis(results: Dict, subscription_level: str) -> None:
     """Отображение расширенного анализа рисков"""
@@ -628,7 +586,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS ДЛЯ TOOLTIP'ОВ
+# CSS ДЛЯ TOOLTIP'ОВ - УПРОЩЕННАЯ ВЕРСИЯ
 st.markdown("""
 <style>
 .tooltip {
@@ -681,12 +639,6 @@ st.markdown("""
     border-width: 5px;
     border-style: solid;
     border-color: #1a1a1a transparent transparent transparent;
-}
-
-.metric-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 /* Адаптивность для мобильных */
@@ -788,10 +740,10 @@ def login_page():
     """, unsafe_allow_html=True)
 
 def create_portfolio_metrics(client_data, portfolio_dict, subscription_level: str):
-    """Создает метрики для портфеля с учетом уровня подписки"""
+    """Создает метрики для портфеля с учетом уровня подписки И ПРОФИЛЯ КЛИЕНТА"""
     portfolio_type = client_data['portfolio_type']
     
-    # Базовые метрики для всех
+    # Базовые метрики для всех - ТЕПЕРЬ СООТВЕТСТВУЮТ ПРОФИЛЮ
     base_metrics = {
         'агрессивный': {
             'expected_return': 0.18, 'volatility': 0.32, 'sharpe_ratio': 0.56, 
@@ -813,7 +765,7 @@ def create_portfolio_metrics(client_data, portfolio_dict, subscription_level: st
     
     metrics = base_metrics.get(portfolio_type, base_metrics['сбалансированный'])
     
-    # Добавляем продвинутые метрики для advanced и premium
+    # Добавляем продвинутые метрики для advanced и premium - ТЕПЕРЬ СООТВЕТСТВУЮТ ПРОФИЛЮ
     if subscription_level in ['advanced', 'premium']:
         advanced_metrics = {
             'агрессивный': {
@@ -835,7 +787,7 @@ def create_portfolio_metrics(client_data, portfolio_dict, subscription_level: st
         }
         metrics.update(advanced_metrics.get(portfolio_type, {}))
     
-    # Добавляем премиум метрики только для premium
+    # Добавляем премиум метрики только для premium - ТЕПЕРЬ СООТВЕТСТВУЮТ ПРОФИЛЮ
     if subscription_level == 'premium':
         premium_metrics = {
             'агрессивный': {
@@ -992,6 +944,9 @@ def advanced_analytics_page():
         display_portfolio_analysis(results, subscription_level)
         
         # Продвинутые метрики эффективности
+        display_advanced_efficiency_metrics(results, subscription_level, client_data)
+        
+        # Продвинутые метрики рисков
         display_advanced_risk_analysis(results, subscription_level)
         
         # Премиум метрики эффективности
@@ -1007,6 +962,46 @@ def advanced_analytics_page():
         st.subheader("📋 Детальные рекомендации")
         for recommendation in results.get('recommendations', []):
             st.info(recommendation)
+
+def display_advanced_efficiency_metrics(results: Dict, subscription_level: str, client_data: Dict):
+    """Отображение продвинутых метрик эффективности СООТВЕТСТВУЮЩИХ ПРОФИЛЮ"""
+    if subscription_level not in ['advanced', 'premium']:
+        return
+    
+    st.subheader("🎯 Продвинутые метрики эффективности")
+    
+    # Получаем метрики, соответствующие профилю клиента
+    portfolio_metrics = create_portfolio_metrics(client_data, {}, subscription_level)
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        display_metric_with_tooltip(
+            "Коэф. Сортино", 
+            f"{portfolio_metrics.get('sortino_ratio', 0):.2f}", 
+            'sortino_ratio'
+        )
+    
+    with col2:
+        display_metric_with_tooltip(
+            "Коэф. Трейнора", 
+            f"{portfolio_metrics.get('treynor_ratio', 0):.3f}", 
+            'treynor_ratio'
+        )
+    
+    with col3:
+        display_metric_with_tooltip(
+            "М-квадрат", 
+            f"{portfolio_metrics.get('m_squared', 0):.3f}", 
+            'm_squared'
+        )
+    
+    with col4:
+        display_metric_with_tooltip(
+            "Альфа Дженсена", 
+            f"{portfolio_metrics.get('jensen_alpha', 0):.3f}", 
+            'jensen_alpha'
+        )
 
 def dashboard_page():
     """Адаптивная панель управления С ОБНОВЛЕННЫМИ ТАРИФАМИ"""
