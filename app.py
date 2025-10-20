@@ -165,7 +165,7 @@ def display_subscription_badge(subscription_level: str) -> str:
     return badges.get(subscription_level, badges['trial'])
 
 def login_page():
-    """Адаптивная страница входа С ИНФОРМАЦИЕЙ О ПОДПИСКАХ"""
+    """Адаптивная страница входа БЕЗ ИНФОРМАЦИИ О ПОДПИСКАХ"""
     st.markdown("""
     <style>
         .login-container {
@@ -203,11 +203,10 @@ def login_page():
     
     clients = get_all_clients()
     
-    # Показываем клиентов с их подписками
+    # Показываем клиентов БЕЗ информации о тарифах
     selected_client = st.selectbox(
         "👤 Выберите клиента:",
         clients,
-        format_func=lambda x: f"{x} - {get_subscription_details(x)['name']} ({get_subscription_details(x)['price']} руб/мес)",
         index=0
     )
     
@@ -409,7 +408,7 @@ def dashboard_page():
     st.markdown(f'''
     <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; margin-bottom: 2rem;">
         <h1 style="color: white; margin-bottom: 0.5rem;">🤖 ЮниВест AI Советник</h1>
-        <h2 style="color: white; margin: 0;">{current_client} - {subscription_details['name']}</h2>
+        <h2 style="color: white; margin: 0;">{current_client}</h2>
         <div style="margin-top: 0.5rem;">
             {badge_html}
         </div>
@@ -572,5 +571,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
