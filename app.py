@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
 import hashlib
+from typing import Dict, List, Optional, Tuple
 
 class AdvancedPortfolioAnalysis:
     """Усовершенствованный класс для анализа портфеля со всеми показателями"""
@@ -1454,6 +1455,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
