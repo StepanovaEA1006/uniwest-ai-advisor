@@ -1,4 +1,4 @@
-# app.py - ОБЪЕДИНЕННАЯ ВЕРСИЯ СО ВСЕМИ ПОКАЗАТЕЛЯМИ И ГРАФИКАМИ
+# app.py - ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ С РАБОТАЮЩИМИ TOOLTIP'AMI
 
 import streamlit as st
 import pandas as pd
@@ -7,12 +7,6 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
 import hashlib
-
-# advanced_analysis.py - расширенная версия прямо в app.py
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Optional, Tuple
-import streamlit as st
 
 class AdvancedPortfolioAnalysis:
     """Усовершенствованный класс для анализа портфеля со всеми показателями"""
@@ -39,7 +33,6 @@ class AdvancedPortfolioAnalysis:
     
     def calculate_basic_metrics(self) -> Dict:
         """Расчет базовых метрик для всех пользователей"""
-        # Реалистичные метрики на основе типа портфеля
         portfolio_type = self._get_portfolio_type()
         
         metrics_map = {
@@ -258,11 +251,9 @@ class AdvancedPortfolioAnalysis:
         if historical_data.empty:
             return {}
         
-        # Расчет скользящих средних
         historical_data['MA_6'] = historical_data['Portfolio_Value'].rolling(window=6, min_periods=1).mean()
         historical_data['MA_12'] = historical_data['Portfolio_Value'].rolling(window=12, min_periods=1).mean()
         
-        # Расчет просадок
         historical_data['Peak'] = historical_data['Portfolio_Value'].expanding().max()
         historical_data['Drawdown'] = (historical_data['Portfolio_Value'] - historical_data['Peak']) / historical_data['Peak'] * 100
         
@@ -278,7 +269,6 @@ class AdvancedPortfolioAnalysis:
             dates = pd.date_range(start='2014-01-01', end='2024-01-01', freq='M')
             np.random.seed(sum(ord(c) for c in self.client_name))
             
-            # Базовые параметры в зависимости от типа портфеля
             portfolio_type = self._get_portfolio_type()
             params_map = {
                 'агрессивный': {'mean': 0.012, 'std': 0.055},
@@ -290,7 +280,6 @@ class AdvancedPortfolioAnalysis:
             params = params_map.get(portfolio_type, params_map['сбалансированный'])
             monthly_returns = np.random.normal(params['mean'], params['std'], len(dates))
             
-            # Добавляем реалистичные кризисы
             crisis_periods = [
                 ('2015-07-01', '2016-02-01', -0.18),
                 ('2018-09-01', '2018-12-01', -0.12),
@@ -303,7 +292,6 @@ class AdvancedPortfolioAnalysis:
                 if mask.any():
                     monthly_returns[mask] += np.random.normal(crisis_strength, 0.02, mask.sum())
             
-            # Расчет накопленной стоимости
             initial_investment = 1000000
             portfolio_value = [initial_investment]
             
@@ -427,7 +415,6 @@ class AdvancedPortfolioAnalysis:
 
 # TOOLTIP'Ы ДЛЯ ПОКАЗАТЕЛЕЙ
 TOOLTIPS = {
-    # БАЗОВЫЕ ПОКАЗАТЕЛИ
     'sharpe_ratio': "📊 **Коэффициент Шарпа**\n\nПоказывает, насколько хорошо доходность компенсирует риск. Чем выше - тем лучше баланс между риском и доходностью.\n\n• <1.0 - можно улучшить\n• 1.0-2.0 - хорошо\n• >2.0 - отлично",
     
     'beta': "📈 **Бета-коэффициент**\n\nЧувствительность портфеля к рынку:\n\n• <0 - движется против рынка\n• 0-1 - менее волатилен чем рынок\n• 1 - как рынок\n• >1 - более волатилен чем рынок",
@@ -438,7 +425,6 @@ TOOLTIPS = {
     
     'annual_volatility': "⚡ **Волатильность**\n\nМера риска - насколько сильно 'колеблется' стоимость портфеля. Чем выше - тем непредсказуемее результат.",
     
-    # ПРОДВИНУТЫЕ ПОКАЗАТЕЛИ
     'sortino_ratio': "🎯 **Коэффициент Сортино**\n\nКак Шарп, но учитывает только 'плохую' волатильность (убытки). Более точный для оценки риска.",
     
     'treynor_ratio': "🏆 **Коэффициент Трейнора**\n\nНасколько вы превосходите безрисковые вложения (например, гособлигации). Чем выше - тем лучше.",
@@ -451,7 +437,6 @@ TOOLTIPS = {
     
     'cvar_95': "⚡ **Conditional VaR**\n\nСредние потери в тех 5% худших сценариев. 'Если уже случилось плохое, то в среднем потеряете X%'",
     
-    # ПРЕМИУМ ПОКАЗАТЕЛИ
     'modigliani_ratio': "💎 **Коэффициент Модильяни**\n\nНасколько ваш портфель эффективнее рынка при том же уровне риска. Золотой стандарт оценки.",
     
     'information_ratio': "🎯 **Information Ratio**\n\nКачество активного управления. Показывает стабильность превосходства над рынком.",
@@ -461,36 +446,25 @@ TOOLTIPS = {
     'calmar_ratio': "⚖️ **Коэффициент Калмара**\n\nДоходность относительно максимальной просадки. Особенно важен для долгосрочных инвесторов."
 }
 
-def create_tooltip(metric_name: str) -> str:
-    """Создает HTML для tooltip'а"""
-    tooltip_text = TOOLTIPS.get(metric_name, "Информация о показателе")
-    return f'''
-    <div class="tooltip">
-        <span class="tooltip-icon">❓</span>
-        <span class="tooltip-text">{tooltip_text}</span>
-    </div>
-    '''
-
-def display_metric_with_tooltip(label: str, value: str, metric_name: str, help_text: str = None):
-    """Отображает метрику с tooltip'ом"""
+def display_metric_with_tooltip(label: str, value: str, metric_name: str):
+    """Отображает метрику с tooltip'ом который работает при наведении"""
     col1, col2 = st.columns([4, 1])
     
     with col1:
         st.metric(label, value)
     
     with col2:
-        if help_text:
-            st.markdown(f"""
-            <div style="margin-top: 1.5rem;">
-                {create_tooltip(metric_name)}
+        tooltip_text = TOOLTIPS.get(metric_name, "Информация о показателе")
+        st.markdown(f"""
+        <div style="display: flex; align-items: center; justify-content: center; height: 100%;">
+            <div class="tooltip">
+                <span class="tooltip-icon">❓</span>
+                <div class="tooltip-content">
+                    {tooltip_text}
+                </div>
             </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div style="margin-top: 1.5rem;">
-                {create_tooltip(metric_name)}
-            </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
 
 # ФУНКЦИИ ДЛЯ ГРАФИКОВ
 def create_historical_performance_chart(historical_data: pd.DataFrame, client_name: str):
@@ -501,7 +475,6 @@ def create_historical_performance_chart(historical_data: pd.DataFrame, client_na
         
         fig = go.Figure()
         
-        # Основная линия портфеля
         fig.add_trace(go.Scatter(
             x=historical_data['Date'],
             y=historical_data['Portfolio_Value'],
@@ -639,10 +612,7 @@ def create_performance_summary_cards(historical_data: pd.DataFrame):
         initial_value = historical_data['Portfolio_Value'].iloc[0]
         total_return = (current_value / initial_value - 1) * 100
         
-        # Максимальная просадка
         max_drawdown = historical_data['Drawdown'].min()
-        
-        # Волатильность
         volatility = historical_data['Monthly_Return'].std() * np.sqrt(12) * 100
         
         col1, col2, col3, col4 = st.columns(4)
@@ -679,16 +649,13 @@ def display_historical_performance(results: Dict, client_name: str):
         
         st.subheader("📈 Историческая производительность (10 лет)")
         
-        # Карточки с ключевыми показателями
         create_performance_summary_cards(historical_data)
         
-        # Основной график производительности
         st.plotly_chart(
             create_historical_performance_chart(historical_data, client_name),
             use_container_width=True
         )
         
-        # Дополнительные графики в колонках
         col1, col2 = st.columns(2)
         
         with col1:
@@ -703,7 +670,6 @@ def display_historical_performance(results: Dict, client_name: str):
                 use_container_width=True
             )
         
-        # Годовая доходность
         if not annual_data.empty:
             st.plotly_chart(
                 create_annual_returns_chart(annual_data),
@@ -713,7 +679,7 @@ def display_historical_performance(results: Dict, client_name: str):
     except Exception as e:
         st.error(f"Ошибка отображения исторических данных: {e}")
 
-# ОСНОВНЫЕ ФУНКЦИИ ОТОБРАЖЕНИЯ (КАК В ПЕРВОЙ ВЕРСИИ)
+# ОСНОВНЫЕ ФУНКЦИИ ОТОБРАЖЕНИЯ
 def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
     """Улучшенное отображение анализа с разными уровнями доступа"""
     if not results:
@@ -726,7 +692,6 @@ def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
         st.error("Отсутствуют базовые метрики")
         return
     
-    # ОСНОВНЫЕ МЕТРИКИ (для всех)
     st.subheader("📊 Основные показатели")
     col1, col2, col3, col4 = st.columns(4)
     
@@ -758,7 +723,6 @@ def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
             'max_drawdown'
         )
     
-    # БЕТА и общая доходность (для всех)
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -785,7 +749,6 @@ def display_advanced_risk_analysis(results: Dict, subscription_level: str) -> No
     
     st.subheader("🎯 Расширенный анализ рисков")
     
-    # Value at Risk метрики
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -808,7 +771,6 @@ def display_advanced_risk_analysis(results: Dict, subscription_level: str) -> No
     with col4:
         st.metric("CVaR (99%)", f"{risk_metrics.get('cvar_99', 0):.2%}")
     
-    # Дополнительные метрики риска
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -829,7 +791,6 @@ def display_efficiency_metrics(results: Dict, subscription_level: str) -> None:
     if not efficiency_metrics:
         return
     
-    # Базовые метрики эффективности (для всех)
     st.subheader("📈 Метрики эффективности")
     
     col1, col2, col3, col4 = st.columns(4)
@@ -858,7 +819,6 @@ def display_efficiency_metrics(results: Dict, subscription_level: str) -> None:
     with col4:
         st.metric("Downside Dev", f"{efficiency_metrics.get('downside_deviation', 0):.2%}")
     
-    # Продвинутые метрики (для advanced и premium)
     if subscription_level in ['advanced', 'premium']:
         col1, col2, col3, col4 = st.columns(4)
         
@@ -890,7 +850,6 @@ def display_efficiency_metrics(results: Dict, subscription_level: str) -> None:
                 'calmar_ratio'
             )
     
-    # Премиум метрики (только для premium)
     if subscription_level == 'premium':
         col1, col2, col3, col4 = st.columns(4)
         
@@ -937,7 +896,6 @@ def display_portfolio_quality(results: Dict, subscription_level: str) -> None:
     with col3:
         st.metric("Ликвидность", f"{portfolio_quality.get('liquidity_score', 0):.0%}")
     
-    # Матрица корреляций
     correlation_matrix = portfolio_quality.get('correlation_matrix')
     if correlation_matrix is not None and not correlation_matrix.empty:
         st.subheader("📊 Матрица корреляций")
@@ -955,14 +913,12 @@ def display_premium_analytics(results: Dict, subscription_level: str) -> None:
     
     st.subheader("💎 Премиум аналитика")
     
-    # AI инсайты
     ai_insights = results.get('ai_insights', [])
     if ai_insights:
         st.success("### 🤖 AI Инсайты")
         for insight in ai_insights:
             st.write(insight)
     
-    # Сравнение с бенчмарками
     comparative = results.get('comparative_analysis', {})
     if comparative:
         st.success("### 🏆 Сравнение с эталонами")
@@ -977,7 +933,6 @@ def display_premium_analytics(results: Dict, subscription_level: str) -> None:
         with col3:
             st.metric("Percentile", f"{comparative.get('percentile_ranking', 0):.0%}")
     
-    # Отраслевая диверсификация
     sectors = results.get('portfolio_quality', {}).get('sector_diversification', {})
     if sectors:
         st.success("### 🌍 Отраслевая диверсификация")
@@ -985,56 +940,98 @@ def display_premium_analytics(results: Dict, subscription_level: str) -> None:
         fig = px.pie(sector_df, values='Доля', names='Сектор', hole=0.4)
         st.plotly_chart(fig, use_container_width=True)
 
-# ИМПОРТИРУЕМ ФУНКЦИИ ИЗ database.py
-try:
-    from database import (
-        get_all_clients, 
-        get_client_details, 
-        get_portfolio_by_client, 
-        generate_subscription_based_recommendations,
-        get_subscription_level,
-        get_subscription_details,
-        can_access_advanced_analytics,
-        can_access_premium_features,
-        SUBSCRIPTION_FEATURES
-    )
-except ImportError:
-    # Заглушки для случая, если database.py не доступен
-    def get_all_clients():
-        return ['Иван Петров', 'Мария Сидорова', 'Алексей Козлов', 'Елена Волкова', 'Дмитрий Смирнов']
-    
-    def get_client_details(client_name):
-        return {
-            'portfolio_type': 'сбалансированный',
-            'risk_profile': 'умеренный',
-            'investment_horizon': '7-10 лет',
-            'experience': 'Продвинутый',
-            'financial_goals': 'Образование детей',
-            'target_amount': 2500000,
-            'initial_investment': 800000
-        }
-    
-    def get_portfolio_by_client(client_name):
-        return {'AAPL': 0.25, 'MSFT': 0.20, 'GOOGL': 0.15, 'AMZN': 0.10, 'TSLA': 0.08, 'Cash': 0.22}
-    
-    def generate_subscription_based_recommendations(client_name):
-        return ["Рекомендация 1", "Рекомендация 2"]
-    
-    def get_subscription_level(client_name):
-        return 'basic'
-    
-    def get_subscription_details(client_name):
-        return {'name': 'Базовый', 'price': 0, 'expires': '2024-12-31'}
-    
-    def can_access_advanced_analytics(client_name):
-        return False
-    
-    def can_access_premium_features(client_name):
-        return False
-    
-    SUBSCRIPTION_FEATURES = {}
+# БАЗОВЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С ДАННЫМИ
+def get_all_clients():
+    return ['Иван Петров', 'Мария Сидорова', 'Алексей Козлов', 'Елена Волкова', 'Дмитрий Смирнов']
 
-# Настраиваем страницу Streamlit
+def get_client_details(client_name):
+    clients_data = {
+        'Иван Петров': {
+            'portfolio_type': 'агрессивный', 'risk_profile': 'очень высокий', 'investment_horizon': '15+ лет',
+            'experience': 'Эксперт', 'financial_goals': 'Создание технологического фонда', 'target_amount': 5000000,
+            'initial_investment': 500000
+        },
+        'Мария Сидорова': {
+            'portfolio_type': 'агрессивный', 'risk_profile': 'высокий', 'investment_horizon': '5-7 лет',
+            'experience': 'Начинающий', 'financial_goals': 'Накопление на жилье', 'target_amount': 800000,
+            'initial_investment': 300000
+        },
+        'Алексей Козлов': {
+            'portfolio_type': 'сбалансированный', 'risk_profile': 'умеренный', 'investment_horizon': '7-10 лет',
+            'experience': 'Продвинутый', 'financial_goals': 'Образование детей', 'target_amount': 2500000,
+            'initial_investment': 800000
+        },
+        'Елена Волкова': {
+            'portfolio_type': 'доходный', 'risk_profile': 'средний', 'investment_horizon': '10+ лет',
+            'experience': 'Опытный', 'financial_goals': 'Пассивный доход', 'target_amount': 4000000,
+            'initial_investment': 1200000
+        },
+        'Дмитрий Смирнов': {
+            'portfolio_type': 'ультра-консервативный', 'risk_profile': 'очень низкий', 'investment_horizon': '1-3 года',
+            'experience': 'Консервативный', 'financial_goals': 'Сохранение капитала', 'target_amount': 2200000,
+            'initial_investment': 2000000
+        }
+    }
+    return clients_data.get(client_name, clients_data['Алексей Козлов'])
+
+def get_portfolio_by_client(client_name):
+    portfolios = {
+        'Иван Петров': {'TSLA': 0.25, 'NVDA': 0.20, 'AMD': 0.15, 'ARKK': 0.15, 'SQ': 0.10, 'BTC-USD': 0.10, 'ETH-USD': 0.05},
+        'Мария Сидорова': {'TSLA': 0.30, 'NVDA': 0.25, 'AMD': 0.20, 'ARKK': 0.15, 'BTC-USD': 0.10},
+        'Алексей Козлов': {'VTI': 0.25, 'VXUS': 0.15, 'BND': 0.20, 'VNQ': 0.10, 'GLD': 0.08, 'AAPL': 0.07, 'MSFT': 0.07, 'JPM': 0.05, 'Cash': 0.03},
+        'Елена Волкова': {'VYM': 0.20, 'SCHD': 0.18, 'T': 0.10, 'VZ': 0.09, 'XOM': 0.08, 'PFE': 0.08, 'JNJ': 0.07, 'PG': 0.07, 'O': 0.06, 'Cash': 0.07},
+        'Дмитрий Смирнов': {'BND': 0.40, 'GOVT': 0.25, 'SHY': 0.15, 'JNJ': 0.08, 'PG': 0.07, 'Cash': 0.05}
+    }
+    return portfolios.get(client_name, portfolios['Алексей Козлов'])
+
+def generate_subscription_based_recommendations(client_name):
+    return [
+        "🎯 **Оптимизация портфеля**: Рекомендуется ребалансировка раз в квартал",
+        "📊 **Диверсификация**: Добавьте международные активы для снижения риска",
+        "💡 **Обучение**: Изучайте финансовые рынки для лучших решений"
+    ]
+
+def get_subscription_level(client_name):
+    subscriptions = {
+        'Иван Петров': 'premium',
+        'Мария Сидорова': 'advanced', 
+        'Алексей Козлов': 'basic',
+        'Елена Волкова': 'basic',
+        'Дмитрий Смирнов': 'basic'
+    }
+    return subscriptions.get(client_name, 'basic')
+
+def get_subscription_details(client_name):
+    level = get_subscription_level(client_name)
+    details = {
+        'basic': {'name': 'Базовый', 'price': 0, 'expires': '2024-12-31'},
+        'advanced': {'name': 'Продвинутый', 'price': 450, 'expires': '2024-11-30'},
+        'premium': {'name': 'Премиум', 'price': 800, 'expires': '2024-12-31'}
+    }
+    return details.get(level, details['basic'])
+
+def can_access_advanced_analytics(client_name):
+    return get_subscription_level(client_name) in ['advanced', 'premium']
+
+def can_access_premium_features(client_name):
+    return get_subscription_level(client_name) == 'premium'
+
+SUBSCRIPTION_FEATURES = {
+    'basic': {
+        'name': 'Базовый', 'price': 0,
+        'features': ['Базовые метрики', 'Рекомендации AI', 'Визуализация портфеля']
+    },
+    'advanced': {
+        'name': 'Продвинутый', 'price': 450,
+        'features': ['Все функции Базового', 'Расширенная аналитика', 'Глубокий анализ рисков']
+    },
+    'premium': {
+        'name': 'Премиум', 'price': 800,
+        'features': ['Все функции Продвинутого', 'AI-прогнозы', 'Персональный советник']
+    }
+}
+
+# НАСТРОЙКА СТРАНИЦЫ STREAMLIT
 st.set_page_config(
     page_title="ЮниВест - AI Советник по Инвестициям",
     page_icon="📊",
@@ -1042,7 +1039,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS ДЛЯ TOOLTIP'ОВ И СТИЛЕЙ (КАК В ПЕРВОЙ ВЕРСИИ)
+# CSS ДЛЯ КОРРЕКТНО РАБОТАЮЩИХ TOOLTIP'ОВ
 st.markdown("""
 <style>
 .tooltip {
@@ -1051,40 +1048,43 @@ st.markdown("""
     cursor: pointer;
 }
 
-.tooltip .tooltip-icon {
+.tooltip-icon {
     color: #666;
-    font-size: 0.9em;
-    padding: 2px 6px;
+    font-size: 1.1em;
+    padding: 4px 8px;
     border-radius: 50%;
     background: #f0f0f0;
+    transition: all 0.3s ease;
 }
 
-.tooltip .tooltip-text {
+.tooltip-icon:hover {
+    background: #e0e0e0;
+    transform: scale(1.1);
+}
+
+.tooltip-content {
     visibility: hidden;
-    width: 300px;
-    background-color: #333;
+    width: 280px;
+    background-color: #2d3748;
     color: white;
     text-align: left;
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 12px;
     position: absolute;
-    z-index: 1;
+    z-index: 1000;
     bottom: 125%;
     left: 50%;
-    margin-left: -150px;
+    transform: translateX(-50%);
     opacity: 0;
     transition: opacity 0.3s;
-    font-size: 0.9em;
-    line-height: 1.4;
+    font-size: 0.85em;
+    line-height: 1.5;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border: 1px solid #4a5568;
+    white-space: pre-line;
 }
 
-.tooltip:hover .tooltip-text {
-    visibility: visible;
-    opacity: 1;
-}
-
-.tooltip .tooltip-text::after {
+.tooltip-content::after {
     content: "";
     position: absolute;
     top: 100%;
@@ -1092,16 +1092,14 @@ st.markdown("""
     margin-left: -5px;
     border-width: 5px;
     border-style: solid;
-    border-color: #333 transparent transparent transparent;
+    border-color: #2d3748 transparent transparent transparent;
 }
 
-.metric-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.tooltip:hover .tooltip-content {
+    visibility: visible;
+    opacity: 1;
 }
 
-/* Стили для бейджей подписки */
 .subscription-badge {
     padding: 4px 12px;
     border-radius: 20px;
@@ -1128,7 +1126,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def init_session_state():
-    """Инициализация состояния сессии"""
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
     if 'current_user' not in st.session_state:
@@ -1137,7 +1134,6 @@ def init_session_state():
         st.session_state.current_page = "📊 Дашборд"
 
 def display_subscription_badge(subscription_level: str) -> str:
-    """Создает красивый бейдж подписки"""
     badges = {
         'basic': '📊 <span class="subscription-badge badge-basic">БАЗОВЫЙ</span>',
         'advanced': '🎯 <span class="subscription-badge badge-advanced">ПРОДВИНУТЫЙ</span>',
@@ -1146,7 +1142,6 @@ def display_subscription_badge(subscription_level: str) -> str:
     return badges.get(subscription_level, badges['basic'])
 
 def login_page():
-    """Адаптивная страница входа БЕЗ ИНФОРМАЦИИ О ПОДПИСКАХ"""
     st.markdown("""
     <style>
         .login-container {
@@ -1184,7 +1179,6 @@ def login_page():
     
     clients = get_all_clients()
     
-    # Показываем клиентов БЕЗ информации о тарифах
     selected_client = st.selectbox(
         "👤 Выберите клиента:",
         clients,
@@ -1211,29 +1205,24 @@ def login_page():
     """, unsafe_allow_html=True)
 
 def display_subscription_status(client_name: str):
-    """Отображает статус подписки клиента"""
     subscription_level = get_subscription_level(client_name)
     subscription_details = get_subscription_details(client_name)
     
     st.sidebar.markdown("---")
     st.sidebar.subheader("💎 Ваша подписка")
     
-    # Бейдж подписки
     badge_html = display_subscription_badge(subscription_level)
     st.sidebar.markdown(f"<div style='text-align: center; margin-bottom: 1rem;'>{badge_html}</div>", unsafe_allow_html=True)
     
-    # Информация о текущем тарифе
     st.sidebar.write(f"**Тариф:** {subscription_details['name']}")
     st.sidebar.write(f"**Стоимость:** {subscription_details['price']} руб/мес")
     st.sidebar.write(f"**Действует до:** {subscription_details['expires']}")
     
-    # Доступные функции
     st.sidebar.markdown("**Доступные функции:**")
     features = SUBSCRIPTION_FEATURES[subscription_level]['features']
     for feature in features[:3]:
         st.sidebar.write(f"• {feature}")
     
-    # Кнопка улучшения, если не премиум
     if subscription_level != 'premium':
         st.sidebar.markdown("---")
         levels = ['basic', 'advanced', 'premium']
@@ -1246,7 +1235,6 @@ def display_subscription_status(client_name: str):
             st.rerun()
 
 def show_feature_unlock_prompt(feature_name: str, required_level: str, client_name: str):
-    """Показывает промт для разблокировки функции"""
     current_level = get_subscription_level(client_name)
     required_plan = SUBSCRIPTION_FEATURES[required_level]
     
@@ -1265,8 +1253,6 @@ def show_feature_unlock_prompt(feature_name: str, required_level: str, client_na
             st.rerun()
 
 def dashboard_page():
-    """Адаптивная панель управления С ВСЕМИ ПОКАЗАТЕЛЯМИ И ГРАФИКАМИ"""
-    
     current_client = st.session_state.current_user
     client_data = get_client_details(current_client)
     portfolio_dict = get_portfolio_by_client(current_client)
@@ -1276,14 +1262,11 @@ def dashboard_page():
         st.error("❌ Ошибка загрузки данных")
         return
     
-    # Определяем уровень доступа
     has_advanced_access = can_access_advanced_analytics(current_client)
     has_premium_access = can_access_premium_features(current_client)
     
-    # Бейдж подписки
     badge_html = display_subscription_badge(subscription_level)
     
-    # ЗАГОЛОВОК С БЕЙДЖЕМ ПОДПИСКИ (КАК В ПЕРВОЙ ВЕРСИИ)
     st.markdown(f'''
     <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; margin-bottom: 2rem;">
         <h1 style="color: white; margin-bottom: 0.5rem;">🤖 ЮниВест AI Советник</h1>
@@ -1294,7 +1277,6 @@ def dashboard_page():
     </div>
     ''', unsafe_allow_html=True)
     
-    # Используем разные раскладки для разных устройств
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
@@ -1311,11 +1293,9 @@ def dashboard_page():
     
     st.markdown("---")
     
-    # SIDEBAR (КАК В ПЕРВОЙ ВЕРСИИ)
     with st.sidebar:
         st.title("🎯 Навигация")
         
-        # Навигация по страницам
         page = st.radio("Выберите раздел:", 
                        ["📊 Дашборд", "📈 Расширенная аналитика", "💎 Тарифы"],
                        index=0)
@@ -1324,7 +1304,6 @@ def dashboard_page():
             st.session_state.current_page = page
             st.rerun()
         
-        # Переключение пользователей
         st.markdown("---")
         clients = get_all_clients()
         new_user = st.selectbox("👥 Выберите клиента:", clients, 
@@ -1336,7 +1315,6 @@ def dashboard_page():
         
         st.markdown("---")
         
-        # Быстрая статистика
         st.subheader("📊 Статистика")
         col1, col2 = st.columns(2)
         with col1:
@@ -1344,20 +1322,15 @@ def dashboard_page():
         with col2:
             st.metric("Риск", client_data['risk_profile'])
         
-        # Статус подписки
         display_subscription_status(current_client)
         
         st.markdown("---")
         
-        # Рекомендации AI
         st.subheader("🤖 Советы")
         recommendations = generate_subscription_based_recommendations(current_client)
         for rec in recommendations[:2]:
             st.info(rec)
     
-    # ОСНОВНОЙ КОНТЕНТ
-    
-    # 1. Профиль клиента
     st.subheader("👤 Профиль клиента")
     col1, col2 = st.columns(2)
     
@@ -1371,7 +1344,6 @@ def dashboard_page():
         st.write(f"**Цель:** {client_data['financial_goals']}")
         st.write(f"**Целевая сумма:** {client_data['target_amount']:,.0f} ₽")
     
-    # 2. Обзор портфеля
     st.subheader("📊 Обзор портфеля")
     weights_df = pd.DataFrame(list(portfolio_dict.items()), columns=['Актив', 'Доля'])
     
@@ -1384,32 +1356,21 @@ def dashboard_page():
     with col2:
         st.dataframe(weights_df, use_container_width=True, hide_index=True)
     
-    # 3. ЗАПУСКАЕМ ПОЛНЫЙ АНАЛИЗ ДЛЯ ПОЛУЧЕНИЯ ВСЕХ ДАННЫХ
     with st.spinner("🔍 Проводим комплексный анализ портфеля..."):
         analyzer = AdvancedPortfolioAnalysis(portfolio_dict, current_client)
         results = analyzer.comprehensive_analysis()
     
     if results:
-        # 4. ОСНОВНЫЕ ПОКАЗАТЕЛИ (ВСЕ КАК В ПЕРВОЙ ВЕРСИИ)
         display_portfolio_analysis(results, subscription_level)
-        
-        # 5. МЕТРИКИ ЭФФЕКТИВНОСТИ
         display_efficiency_metrics(results, subscription_level)
-        
-        # 6. РАСШИРЕННЫЙ АНАЛИЗ РИСКОВ
         display_advanced_risk_analysis(results, subscription_level)
-        
-        # 7. КАЧЕСТВО ПОРТФЕЛЯ
         display_portfolio_quality(results, subscription_level)
         
-        # 8. ИСТОРИЧЕСКАЯ ПРОИЗВОДИТЕЛЬНОСТЬ (НОВЫЕ ГРАФИКИ)
         st.markdown("---")
         display_historical_performance(results, current_client)
         
-        # 9. ПРЕМИУМ АНАЛИТИКА
         display_premium_analytics(results, subscription_level)
         
-        # 10. РЕКОМЕНДАЦИИ
         st.subheader("📋 Детальные рекомендации")
         for recommendation in results.get('recommendations', []):
             st.info(recommendation)
@@ -1417,20 +1378,17 @@ def dashboard_page():
         st.error("❌ Не удалось провести анализ портфеля")
 
 def advanced_analytics_page():
-    """УЛУЧШЕННАЯ страница расширенной аналитики"""
     current_client = st.session_state.current_user
     subscription_level = get_subscription_level(current_client)
     
     st.title("📈 Расширенная аналитика")
     
-    # Проверяем доступ
     if not can_access_advanced_analytics(current_client):
         show_feature_unlock_prompt("Расширенная аналитика", "advanced", current_client)
         return
     
     st.success(f"🎯 У вас есть доступ к расширенной аналитике!")
     
-    # Загружаем данные клиента
     client_data = get_client_details(current_client)
     portfolio_dict = get_portfolio_by_client(current_client)
     
@@ -1438,48 +1396,34 @@ def advanced_analytics_page():
         st.error("❌ Не удалось загрузить портфель")
         return
     
-    # Запускаем РАСШИРЕННЫЙ анализ
     with st.spinner("🔍 Проводим углубленный анализ портфеля..."):
         analyzer = AdvancedPortfolioAnalysis(portfolio_dict, current_client)
         results = analyzer.comprehensive_analysis()
     
     if results:
-        # Базовые метрики
         display_portfolio_analysis(results, subscription_level)
-        
-        # Метрики эффективности
         display_efficiency_metrics(results, subscription_level)
-        
-        # Расширенный анализ рисков
         display_advanced_risk_analysis(results, subscription_level)
-        
-        # Качество портфеля
         display_portfolio_quality(results, subscription_level)
         
-        # Историческая производительность
         st.markdown("---")
         display_historical_performance(results, current_client)
         
-        # Премиум аналитика
         display_premium_analytics(results, subscription_level)
         
-        # Рекомендации
         st.subheader("📋 Детальные рекомендации")
         for recommendation in results.get('recommendations', []):
             st.info(recommendation)
 
 def display_pricing_page():
-    """Страница с сравнением тарифов"""
     st.title("💎 Выберите свой тариф")
     st.write("Начните с бесплатного базового тарифа и улучшайте по мере роста ваших потребностей")
     
-    # Создаем колонки для тарифов
     col1, col2, col3 = st.columns(3)
     
     for i, level in enumerate(['basic', 'advanced', 'premium']):
         plan = SUBSCRIPTION_FEATURES[level]
         with [col1, col2, col3][i]:
-            # Заголовок с бейджем
             badge_html = display_subscription_badge(level)
             st.markdown(f"<div style='text-align: center; margin-bottom: 1rem;'>{badge_html}</div>", unsafe_allow_html=True)
             
@@ -1496,13 +1440,11 @@ def display_pricing_page():
                 st.button(f"💳 Выбрать {plan['name']}", key=f"btn_{level}", use_container_width=True)
 
 def main():
-    """Главная функция приложения"""
     init_session_state()
     
     if not st.session_state.authenticated:
         login_page()
     else:
-        # Роутинг по страницам
         if st.session_state.current_page == "📊 Дашборд":
             dashboard_page()
         elif st.session_state.current_page == "📈 Расширенная аналитика":
@@ -1512,6 +1454,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
