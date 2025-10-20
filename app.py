@@ -1,4 +1,4 @@
-# app.py - ВЕРСИЯ С СВОРАЧИВАЕМЫМИ СЕКЦИЯМИ ПОКАЗАТЕЛЕЙ
+# app.py - АДАПТИВНАЯ ВЕРСИЯ ДЛЯ ВСЕХ УСТРОЙСТВ
 
 import streamlit as st
 import pandas as pd
@@ -616,19 +616,29 @@ def create_performance_summary_cards(historical_data: pd.DataFrame):
         max_drawdown = historical_data['Drawdown'].min()
         volatility = historical_data['Monthly_Return'].std() * np.sqrt(12) * 100
         
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Общая доходность", f"{total_return:.1f}%")
-        
-        with col2:
-            st.metric("Текущая стоимость", f"₽{current_value:,.0f}")
-        
-        with col3:
-            st.metric("Макс. просадка", f"{max_drawdown:.1f}%")
-        
-        with col4:
-            st.metric("Волатильность", f"{volatility:.1f}%")
+        # Адаптивная верстка для разных устройств
+        if st.session_state.is_mobile:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Общая доходность", f"{total_return:.1f}%")
+            with col2:
+                st.metric("Текущая стоимость", f"₽{current_value:,.0f}")
+            
+            col3, col4 = st.columns(2)
+            with col3:
+                st.metric("Макс. просадка", f"{max_drawdown:.1f}%")
+            with col4:
+                st.metric("Волатильность", f"{volatility:.1f}%")
+        else:
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Общая доходность", f"{total_return:.1f}%")
+            with col2:
+                st.metric("Текущая стоимость", f"₽{current_value:,.0f}")
+            with col3:
+                st.metric("Макс. просадка", f"{max_drawdown:.1f}%")
+            with col4:
+                st.metric("Волатильность", f"{volatility:.1f}%")
             
     except Exception as e:
         st.error(f"Ошибка создания карточек: {e}")
@@ -657,19 +667,28 @@ def display_historical_performance(results: Dict, client_name: str):
             use_container_width=True
         )
         
-        col1, col2 = st.columns(2)
-        
-        with col1:
+        # Адаптивная верстка графиков
+        if st.session_state.is_mobile:
             st.plotly_chart(
                 create_returns_chart(historical_data),
                 use_container_width=True
             )
-        
-        with col2:
             st.plotly_chart(
                 create_drawdown_chart(historical_data),
                 use_container_width=True
             )
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.plotly_chart(
+                    create_returns_chart(historical_data),
+                    use_container_width=True
+                )
+            with col2:
+                st.plotly_chart(
+                    create_drawdown_chart(historical_data),
+                    use_container_width=True
+                )
         
         if not annual_data.empty:
             st.plotly_chart(
@@ -680,32 +699,32 @@ def display_historical_performance(results: Dict, client_name: str):
     except Exception as e:
         st.error(f"Ошибка отображения исторических данных: {e}")
 
-# ОСНОВНЫЕ ФУНКЦИИ ОТОБРАЖЕНИЯ С СВОРАЧИВАЕМЫМИ СЕКЦИЯМИ
+# АДАПТИВНЫЕ ФУНКЦИИ ОТОБРАЖЕНИЯ
 def display_collapsible_section(title: str, expanded: bool = True):
-    """Создает сворачиваемую секцию"""
-    # Создаем уникальный ключ для каждой секции
-    key = f"collapsible_{title}"
+    """Создает адаптивную сворачиваемую секцию"""
+    key = f"collapsible_{hash(title)}"
     
-    # Инициализируем состояние секции
     if key not in st.session_state:
         st.session_state[key] = expanded
     
-    # Создаем заголовок с кнопкой свернуть/развернуть
-    col1, col2 = st.columns([6, 1])
+    # Адаптивный заголовок для мобильных устройств
+    if st.session_state.is_mobile:
+        col1, col2 = st.columns([5, 1])
+    else:
+        col1, col2 = st.columns([6, 1])
     
     with col1:
         st.subheader(title)
     
     with col2:
-        # Кнопка для переключения состояния
         button_label = "⬆️" if st.session_state[key] else "⬇️"
-        if st.button(button_label, key=f"btn_{title}", use_container_width=True):
+        if st.button(button_label, key=f"btn_{key}", use_container_width=True):
             st.session_state[key] = not st.session_state[key]
     
     return st.session_state[key]
 
 def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
-    """Улучшенное отображение анализа с разными уровнями доступа"""
+    """Адаптивное отображение анализа с разными уровнями доступа"""
     if not results:
         st.error("Нет данных для отображения")
         return
@@ -716,212 +735,154 @@ def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
         st.error("Отсутствуют базовые метрики")
         return
     
-    # ОСНОВНЫЕ ПОКАЗАТЕЛИ (сворачиваемая секция)
+    # ОСНОВНЫЕ ПОКАЗАТЕЛИ
     if display_collapsible_section("📊 Основные показатели", expanded=True):
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            display_metric_with_tooltip(
-                "Годовая доходность", 
-                f"{metrics.get('annual_return', 0):.1%}", 
-                'annual_return'
-            )
-        
-        with col2:
-            display_metric_with_tooltip(
-                "Волатильность", 
-                f"{metrics.get('annual_volatility', 0):.1%}", 
-                'annual_volatility'
-            )
-        
-        with col3:
-            display_metric_with_tooltip(
-                "Коэффициент Шарпа", 
-                f"{metrics.get('sharpe_ratio', 0):.2f}", 
-                'sharpe_ratio'
-            )
-        
-        with col4:
-            display_metric_with_tooltip(
-                "Макс. просадка", 
-                f"{metrics.get('max_drawdown', 0):.1%}", 
-                'max_drawdown'
-            )
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            display_metric_with_tooltip(
-                "Бета-коэффициент", 
-                f"{metrics.get('beta', 0):.2f}", 
-                'beta'
-            )
-        
-        with col2:
-            st.metric("Текущая стоимость", f"₽{metrics.get('current_value', 0):,}")
-        
-        with col3:
-            st.metric("Общая доходность", f"{metrics.get('total_return', 0):.1%}")
-        
-        with col4:
-            st.metric("Тип портфеля", results.get('portfolio_quality', {}).get('concentration_risk', 'Н/Д'))
+        if st.session_state.is_mobile:
+            # Мобильная версия - 2 колонки
+            col1, col2 = st.columns(2)
+            with col1:
+                display_metric_with_tooltip("Годовая доходность", f"{metrics.get('annual_return', 0):.1%}", 'annual_return')
+                display_metric_with_tooltip("Коэффициент Шарпа", f"{metrics.get('sharpe_ratio', 0):.2f}", 'sharpe_ratio')
+            with col2:
+                display_metric_with_tooltip("Волатильность", f"{metrics.get('annual_volatility', 0):.1%}", 'annual_volatility')
+                display_metric_with_tooltip("Макс. просадка", f"{metrics.get('max_drawdown', 0):.1%}", 'max_drawdown')
+            
+            col3, col4 = st.columns(2)
+            with col3:
+                display_metric_with_tooltip("Бета-коэффициент", f"{metrics.get('beta', 0):.2f}", 'beta')
+                st.metric("Текущая стоимость", f"₽{metrics.get('current_value', 0):,}")
+            with col4:
+                st.metric("Общая доходность", f"{metrics.get('total_return', 0):.1%}")
+                st.metric("Тип портфеля", results.get('portfolio_quality', {}).get('concentration_risk', 'Н/Д'))
+        else:
+            # Десктопная версия - 4 колонки
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                display_metric_with_tooltip("Годовая доходность", f"{metrics.get('annual_return', 0):.1%}", 'annual_return')
+            with col2:
+                display_metric_with_tooltip("Волатильность", f"{metrics.get('annual_volatility', 0):.1%}", 'annual_volatility')
+            with col3:
+                display_metric_with_tooltip("Коэффициент Шарпа", f"{metrics.get('sharpe_ratio', 0):.2f}", 'sharpe_ratio')
+            with col4:
+                display_metric_with_tooltip("Макс. просадка", f"{metrics.get('max_drawdown', 0):.1%}", 'max_drawdown')
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                display_metric_with_tooltip("Бета-коэффициент", f"{metrics.get('beta', 0):.2f}", 'beta')
+            with col2:
+                st.metric("Текущая стоимость", f"₽{metrics.get('current_value', 0):,}")
+            with col3:
+                st.metric("Общая доходность", f"{metrics.get('total_return', 0):.1%}")
+            with col4:
+                st.metric("Тип портфеля", results.get('portfolio_quality', {}).get('concentration_risk', 'Н/Д'))
 
 def display_efficiency_metrics(results: Dict, subscription_level: str) -> None:
-    """Отображение метрик эффективности"""
+    """Адаптивное отображение метрик эффективности"""
     efficiency_metrics = results.get('efficiency_metrics', {})
     if not efficiency_metrics:
         return
     
-    # МЕТРИКИ ЭФФЕКТИВНОСТИ (сворачиваемая секция)
     if display_collapsible_section("📈 Метрики эффективности", expanded=True):
-        col1, col2, col3, col4 = st.columns(4)
+        if st.session_state.is_mobile:
+            col1, col2 = st.columns(2)
+            with col1:
+                display_metric_with_tooltip("Коэф. Шарпа", f"{efficiency_metrics.get('sharpe_ratio', 0):.2f}", 'sharpe_ratio')
+                display_metric_with_tooltip("Бета", f"{efficiency_metrics.get('beta', 0):.2f}", 'beta')
+            with col2:
+                display_metric_with_tooltip("Коэф. Сортино", f"{efficiency_metrics.get('sortino_ratio', 0):.2f}", 'sortino_ratio')
+                st.metric("Downside Dev", f"{efficiency_metrics.get('downside_deviation', 0):.2%}")
+        else:
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                display_metric_with_tooltip("Коэф. Шарпа", f"{efficiency_metrics.get('sharpe_ratio', 0):.2f}", 'sharpe_ratio')
+            with col2:
+                display_metric_with_tooltip("Коэф. Сортино", f"{efficiency_metrics.get('sortino_ratio', 0):.2f}", 'sortino_ratio')
+            with col3:
+                display_metric_with_tooltip("Бета", f"{efficiency_metrics.get('beta', 0):.2f}", 'beta')
+            with col4:
+                st.metric("Downside Dev", f"{efficiency_metrics.get('downside_deviation', 0):.2%}")
         
-        with col1:
-            display_metric_with_tooltip(
-                "Коэф. Шарпа", 
-                f"{efficiency_metrics.get('sharpe_ratio', 0):.2f}", 
-                'sharpe_ratio'
-            )
-        
-        with col2:
-            display_metric_with_tooltip(
-                "Коэф. Сортино", 
-                f"{efficiency_metrics.get('sortino_ratio', 0):.2f}", 
-                'sortino_ratio'
-            )
-        
-        with col3:
-            display_metric_with_tooltip(
-                "Бета", 
-                f"{efficiency_metrics.get('beta', 0):.2f}", 
-                'beta'
-            )
-        
-        with col4:
-            st.metric("Downside Dev", f"{efficiency_metrics.get('downside_deviation', 0):.2%}")
-        
-        # Продвинутые метрики (для advanced и premium)
+        # Продвинутые метрики
         if subscription_level in ['advanced', 'premium']:
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                display_metric_with_tooltip(
-                    "Коэф. Трейнора", 
-                    f"{efficiency_metrics.get('treynor_ratio', 0):.3f}", 
-                    'treynor_ratio'
-                )
-            
-            with col2:
-                display_metric_with_tooltip(
-                    "М-квадрат", 
-                    f"{efficiency_metrics.get('m_squared', 0):.3f}", 
-                    'm_squared'
-                )
-            
-            with col3:
-                display_metric_with_tooltip(
-                    "Альфа Дженсена", 
-                    f"{efficiency_metrics.get('jensen_alpha', 0):.3f}", 
-                    'jensen_alpha'
-                )
-            
-            with col4:
-                display_metric_with_tooltip(
-                    "Коэф. Калмара", 
-                    f"{efficiency_metrics.get('calmar_ratio', 0):.2f}", 
-                    'calmar_ratio'
-                )
-        
-        # Премиум метрики (только для premium)
-        if subscription_level == 'premium':
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                display_metric_with_tooltip(
-                    "Коэф. Модильяни", 
-                    f"{efficiency_metrics.get('modigliani_ratio', 0):.3f}", 
-                    'modigliani_ratio'
-                )
-            
-            with col2:
-                display_metric_with_tooltip(
-                    "Information Ratio", 
-                    f"{efficiency_metrics.get('information_ratio', 0):.3f}", 
-                    'information_ratio'
-                )
-            
-            with col3:
-                display_metric_with_tooltip(
-                    "Tracking Error", 
-                    f"{efficiency_metrics.get('tracking_error', 0):.3f}", 
-                    'tracking_error'
-                )
-            
-            with col4:
-                st.metric("Portfolio Quality", "Высокий")
+            if st.session_state.is_mobile:
+                col1, col2 = st.columns(2)
+                with col1:
+                    display_metric_with_tooltip("Коэф. Трейнора", f"{efficiency_metrics.get('treynor_ratio', 0):.3f}", 'treynor_ratio')
+                    display_metric_with_tooltip("Альфа Дженсена", f"{efficiency_metrics.get('jensen_alpha', 0):.3f}", 'jensen_alpha')
+                with col2:
+                    display_metric_with_tooltip("М-квадрат", f"{efficiency_metrics.get('m_squared', 0):.3f}", 'm_squared')
+                    display_metric_with_tooltip("Коэф. Калмара", f"{efficiency_metrics.get('calmar_ratio', 0):.2f}", 'calmar_ratio')
+            else:
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    display_metric_with_tooltip("Коэф. Трейнора", f"{efficiency_metrics.get('treynor_ratio', 0):.3f}", 'treynor_ratio')
+                with col2:
+                    display_metric_with_tooltip("М-квадрат", f"{efficiency_metrics.get('m_squared', 0):.3f}", 'm_squared')
+                with col3:
+                    display_metric_with_tooltip("Альфа Дженсена", f"{efficiency_metrics.get('jensen_alpha', 0):.3f}", 'jensen_alpha')
+                with col4:
+                    display_metric_with_tooltip("Коэф. Калмара", f"{efficiency_metrics.get('calmar_ratio', 0):.2f}", 'calmar_ratio')
 
 def display_advanced_risk_analysis(results: Dict, subscription_level: str) -> None:
-    """Отображение расширенного анализа рисков"""
+    """Адаптивное отображение расширенного анализа рисков"""
     risk_metrics = results.get('risk_metrics', {})
     if not risk_metrics or subscription_level not in ['advanced', 'premium']:
         return
     
-    # РАСШИРЕННЫЙ АНАЛИЗ РИСКОВ (сворачиваемая секция)
     if display_collapsible_section("🎯 Расширенный анализ рисков", expanded=True):
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            display_metric_with_tooltip(
-                "VaR (95%)", 
-                f"{risk_metrics.get('parametric_var_95', 0):.2%}", 
-                'parametric_var_95'
-            )
-        
-        with col2:
-            display_metric_with_tooltip(
-                "CVaR (95%)", 
-                f"{risk_metrics.get('cvar_95', 0):.2%}", 
-                'cvar_95'
-            )
-        
-        with col3:
-            st.metric("VaR (99%)", f"{risk_metrics.get('parametric_var_99', 0):.2%}")
-        
-        with col4:
-            st.metric("CVaR (99%)", f"{risk_metrics.get('cvar_99', 0):.2%}")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Downside Deviation", f"{risk_metrics.get('downside_deviation', 0):.2%}")
-        
-        with col2:
-            st.metric("Worst Day", f"{risk_metrics.get('worst_day', 0):.2%}")
-        
-        with col3:
-            st.metric("Worst Month", f"{risk_metrics.get('worst_month', 0):.2%}")
-        
-        with col4:
-            st.metric("Stress Test 2008", f"{risk_metrics.get('stress_test_2008', 0):.1%}")
+        if st.session_state.is_mobile:
+            col1, col2 = st.columns(2)
+            with col1:
+                display_metric_with_tooltip("VaR (95%)", f"{risk_metrics.get('parametric_var_95', 0):.2%}", 'parametric_var_95')
+                st.metric("VaR (99%)", f"{risk_metrics.get('parametric_var_99', 0):.2%}")
+                st.metric("Downside Deviation", f"{risk_metrics.get('downside_deviation', 0):.2%}")
+            with col2:
+                display_metric_with_tooltip("CVaR (95%)", f"{risk_metrics.get('cvar_95', 0):.2%}", 'cvar_95')
+                st.metric("CVaR (99%)", f"{risk_metrics.get('cvar_99', 0):.2%}")
+                st.metric("Worst Day", f"{risk_metrics.get('worst_day', 0):.2%}")
+        else:
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                display_metric_with_tooltip("VaR (95%)", f"{risk_metrics.get('parametric_var_95', 0):.2%}", 'parametric_var_95')
+            with col2:
+                display_metric_with_tooltip("CVaR (95%)", f"{risk_metrics.get('cvar_95', 0):.2%}", 'cvar_95')
+            with col3:
+                st.metric("VaR (99%)", f"{risk_metrics.get('parametric_var_99', 0):.2%}")
+            with col4:
+                st.metric("CVaR (99%)", f"{risk_metrics.get('cvar_99', 0):.2%}")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Downside Deviation", f"{risk_metrics.get('downside_deviation', 0):.2%}")
+            with col2:
+                st.metric("Worst Day", f"{risk_metrics.get('worst_day', 0):.2%}")
+            with col3:
+                st.metric("Worst Month", f"{risk_metrics.get('worst_month', 0):.2%}")
+            with col4:
+                st.metric("Stress Test 2008", f"{risk_metrics.get('stress_test_2008', 0):.1%}")
 
 def display_portfolio_quality(results: Dict, subscription_level: str) -> None:
-    """Отображение качества портфеля"""
+    """Адаптивное отображение качества портфеля"""
     portfolio_quality = results.get('portfolio_quality', {})
     if not portfolio_quality or subscription_level not in ['advanced', 'premium']:
         return
     
-    # КАЧЕСТВО ПОРТФЕЛЯ (сворачиваемая секция)
     if display_collapsible_section("🏆 Качество портфеля", expanded=True):
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric("Оценка диверсификации", f"{portfolio_quality.get('diversification_score', 0):.0%}")
-        
-        with col2:
-            st.metric("Распределение активов", f"{portfolio_quality.get('asset_allocation_score', 0):.0%}")
-        
-        with col3:
-            st.metric("Ликвидность", f"{portfolio_quality.get('liquidity_score', 0):.0%}")
+        if st.session_state.is_mobile:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Оценка диверсификации", f"{portfolio_quality.get('diversification_score', 0):.0%}")
+                st.metric("Ликвидность", f"{portfolio_quality.get('liquidity_score', 0):.0%}")
+            with col2:
+                st.metric("Распределение активов", f"{portfolio_quality.get('asset_allocation_score', 0):.0%}")
+        else:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Оценка диверсификации", f"{portfolio_quality.get('diversification_score', 0):.0%}")
+            with col2:
+                st.metric("Распределение активов", f"{portfolio_quality.get('asset_allocation_score', 0):.0%}")
+            with col3:
+                st.metric("Ликвидность", f"{portfolio_quality.get('liquidity_score', 0):.0%}")
         
         correlation_matrix = portfolio_quality.get('correlation_matrix')
         if correlation_matrix is not None and not correlation_matrix.empty:
@@ -934,11 +895,10 @@ def display_portfolio_quality(results: Dict, subscription_level: str) -> None:
             st.plotly_chart(fig, use_container_width=True)
 
 def display_premium_analytics(results: Dict, subscription_level: str) -> None:
-    """Премиум аналитика"""
+    """Адаптивная премиум аналитика"""
     if subscription_level != 'premium':
         return
     
-    # ПРЕМИУМ АНАЛИТИКА (сворачиваемая секция)
     if display_collapsible_section("💎 Премиум аналитика", expanded=True):
         ai_insights = results.get('ai_insights', [])
         if ai_insights:
@@ -949,16 +909,21 @@ def display_premium_analytics(results: Dict, subscription_level: str) -> None:
         comparative = results.get('comparative_analysis', {})
         if comparative:
             st.success("### 🏆 Сравнение с эталонами")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("vs S&P 500", f"{comparative.get('outperformance_sp500', 0):.2%}")
-            
-            with col2:
-                st.metric("vs Nasdaq", f"{comparative.get('outperformance_nasdaq', 0):.2%}")
-            
-            with col3:
-                st.metric("Percentile", f"{comparative.get('percentile_ranking', 0):.0%}")
+            if st.session_state.is_mobile:
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("vs S&P 500", f"{comparative.get('outperformance_sp500', 0):.2%}")
+                    st.metric("Percentile", f"{comparative.get('percentile_ranking', 0):.0%}")
+                with col2:
+                    st.metric("vs Nasdaq", f"{comparative.get('outperformance_nasdaq', 0):.2%}")
+            else:
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("vs S&P 500", f"{comparative.get('outperformance_sp500', 0):.2%}")
+                with col2:
+                    st.metric("vs Nasdaq", f"{comparative.get('outperformance_nasdaq', 0):.2%}")
+                with col3:
+                    st.metric("Percentile", f"{comparative.get('percentile_ranking', 0):.0%}")
         
         sectors = results.get('portfolio_quality', {}).get('sector_diversification', {})
         if sectors:
@@ -1058,131 +1023,247 @@ SUBSCRIPTION_FEATURES = {
     }
 }
 
+# ФУНКЦИИ ДЕТЕКЦИИ УСТРОЙСТВ
+def detect_device_type():
+    """Определяет тип устройства на основе user agent"""
+    try:
+        from streamlit.web.server.websocket_headers import _get_websocket_headers
+        headers = _get_websocket_headers()
+        if headers and 'User-Agent' in headers:
+            user_agent = headers['User-Agent'].lower()
+            
+            # Детекция мобильных устройств
+            mobile_keywords = ['mobile', 'android', 'iphone', 'ipad', 'tablet']
+            if any(keyword in user_agent for keyword in mobile_keywords):
+                return 'mobile'
+            
+            # Детекция планшетов
+            tablet_keywords = ['tablet', 'ipad']
+            if any(keyword in user_agent for keyword in tablet_keywords):
+                return 'tablet'
+                
+        return 'desktop'
+    except:
+        return 'desktop'
+
 # НАСТРОЙКА СТРАНИЦЫ STREAMLIT
-st.set_page_config(
-    page_title="ЮниВест - AI Советник по Инвестициям",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+def setup_page_config():
+    """Настройка конфигурации страницы в зависимости от устройства"""
+    device_type = detect_device_type()
+    
+    if device_type == 'mobile':
+        st.set_page_config(
+            page_title="ЮниВест - AI Советник",
+            page_icon="📊",
+            layout="centered",
+            initial_sidebar_state="collapsed"
+        )
+        st.session_state.is_mobile = True
+        st.session_state.is_tablet = False
+    elif device_type == 'tablet':
+        st.set_page_config(
+            page_title="ЮниВест - AI Советник",
+            page_icon="📊",
+            layout="wide",
+            initial_sidebar_state="expanded"
+        )
+        st.session_state.is_mobile = False
+        st.session_state.is_tablet = True
+    else:
+        st.set_page_config(
+            page_title="ЮниВест - AI Советник по Инвестициям",
+            page_icon="📊",
+            layout="wide",
+            initial_sidebar_state="expanded"
+        )
+        st.session_state.is_mobile = False
+        st.session_state.is_tablet = False
 
-# CSS ДЛЯ КОРРЕКТНО РАБОТАЮЩИХ TOOLTIP'ОВ И СВОРАЧИВАЕМЫХ СЕКЦИЙ
-st.markdown("""
-<style>
-.tooltip {
-    position: relative;
-    display: inline-block;
-    cursor: pointer;
-}
+# АДАПТИВНЫЙ CSS ДЛЯ РАЗНЫХ УСТРОЙСТВ
+def inject_adaptive_css():
+    """Внедряет адаптивный CSS для разных устройств"""
+    st.markdown("""
+    <style>
+    /* Базовые стили для всех устройств */
+    .tooltip {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+    }
 
-.tooltip-icon {
-    color: #666;
-    font-size: 1.1em;
-    padding: 4px 8px;
-    border-radius: 50%;
-    background: #f0f0f0;
-    transition: all 0.3s ease;
-}
+    .tooltip-icon {
+        color: #666;
+        font-size: 1.1em;
+        padding: 4px 8px;
+        border-radius: 50%;
+        background: #f0f0f0;
+        transition: all 0.3s ease;
+    }
 
-.tooltip-icon:hover {
-    background: #e0e0e0;
-    transform: scale(1.1);
-}
+    .tooltip-icon:hover {
+        background: #e0e0e0;
+        transform: scale(1.1);
+    }
 
-.tooltip-content {
-    visibility: hidden;
-    width: 280px;
-    background-color: #2d3748;
-    color: white;
-    text-align: left;
-    border-radius: 8px;
-    padding: 12px;
-    position: absolute;
-    z-index: 1000;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 0.85em;
-    line-height: 1.5;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    border: 1px solid #4a5568;
-    white-space: pre-line;
-}
+    .tooltip-content {
+        visibility: hidden;
+        width: 280px;
+        background-color: #2d3748;
+        color: white;
+        text-align: left;
+        border-radius: 8px;
+        padding: 12px;
+        position: absolute;
+        z-index: 1000;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 0.85em;
+        line-height: 1.5;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        border: 1px solid #4a5568;
+        white-space: pre-line;
+    }
 
-.tooltip-content::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #2d3748 transparent transparent transparent;
-}
+    .tooltip-content::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #2d3748 transparent transparent transparent;
+    }
 
-.tooltip:hover .tooltip-content {
-    visibility: visible;
-    opacity: 1;
-}
+    .tooltip:hover .tooltip-content {
+        visibility: visible;
+        opacity: 1;
+    }
 
-.subscription-badge {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.8em;
-    font-weight: bold;
-    text-align: center;
-}
+    .subscription-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: bold;
+        text-align: center;
+    }
 
-.badge-basic {
-    background: linear-gradient(135deg, #11998e, #38ef7d);
-    color: white;
-}
+    .badge-basic {
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        color: white;
+    }
 
-.badge-advanced {
-    background: linear-gradient(135deg, #fc466b, #3f5efb);
-    color: white;
-}
+    .badge-advanced {
+        background: linear-gradient(135deg, #fc466b, #3f5efb);
+        color: white;
+    }
 
-.badge-premium {
-    background: linear-gradient(135deg, #ffd700, #ff8c00);
-    color: black;
-}
+    .badge-premium {
+        background: linear-gradient(135deg, #ffd700, #ff8c00);
+        color: black;
+    }
 
-/* Стили для сворачиваемых секций */
-.collapsible-section {
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 1rem;
-    margin: 1rem 0;
-    background: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+    /* Адаптивные стили для мобильных устройств */
+    @media (max-width: 768px) {
+        .main-title {
+            font-size: 1.5rem !important;
+        }
+        
+        .metric-row {
+            flex-direction: column;
+        }
+        
+        .metric-card {
+            margin-bottom: 0.5rem;
+            width: 100% !important;
+        }
+        
+        /* Улучшаем отображение графиков на мобильных */
+        .js-plotly-plot .plotly .modebar {
+            display: none !important;
+        }
+        
+        /* Увеличиваем кнопки для touch */
+        .stButton button {
+            min-height: 44px;
+            font-size: 16px;
+        }
+        
+        /* Улучшаем читаемость текста */
+        .stMarkdown {
+            font-size: 14px;
+        }
+        
+        /* Адаптивные колонки */
+        .block-container {
+            padding: 1rem;
+        }
+    }
 
-.collapsible-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    padding: 0.5rem 0;
-}
+    /* Стили для планшетов */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .main-title {
+            font-size: 2rem !important;
+        }
+        
+        .metric-card {
+            min-width: 45% !important;
+        }
+    }
 
-.collapsible-content {
-    margin-top: 1rem;
-}
-</style>
-""", unsafe_allow_html=True)
+    /* Стили для десктопов */
+    @media (min-width: 1025px) {
+        .main-title {
+            font-size: 2.5rem !important;
+        }
+        
+        .metric-card {
+            min-width: 22% !important;
+        }
+    }
+
+    /* Улучшенные стили для сворачиваемых секций */
+    .collapsible-section {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1rem 0;
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .collapsible-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        padding: 0.5rem 0;
+    }
+
+    .collapsible-content {
+        margin-top: 1rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 def init_session_state():
+    """Инициализация состояния сессии"""
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
     if 'current_user' not in st.session_state:
         st.session_state.current_user = None
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "📊 Дашборд"
+    if 'is_mobile' not in st.session_state:
+        st.session_state.is_mobile = False
+    if 'is_tablet' not in st.session_state:
+        st.session_state.is_tablet = False
 
 def display_subscription_badge(subscription_level: str) -> str:
+    """Отображение бейджа подписки"""
     badges = {
         'basic': '📊 <span class="subscription-badge badge-basic">БАЗОВЫЙ</span>',
         'advanced': '🎯 <span class="subscription-badge badge-advanced">ПРОДВИНУТЫЙ</span>',
@@ -1190,13 +1271,14 @@ def display_subscription_badge(subscription_level: str) -> str:
     }
     return badges.get(subscription_level, badges['basic'])
 
-def login_page():
+def adaptive_login_page():
+    """Адаптивная страница входа"""
     st.markdown("""
     <style>
         .login-container {
             max-width: 90%;
             width: 400px;
-            margin: 10vh auto;
+            margin: 5vh auto;
             padding: 2rem;
             background: white;
             border-radius: 20px;
@@ -1204,7 +1286,7 @@ def login_page():
             text-align: center;
         }
         .main-title {
-            font-size: clamp(2rem, 5vw, 2.8rem);
+            font-size: clamp(1.8rem, 5vw, 2.8rem);
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -1214,7 +1296,14 @@ def login_page():
         .subtitle {
             color: #666;
             margin-bottom: 2rem;
-            font-size: clamp(1rem, 3vw, 1.2rem);
+            font-size: clamp(0.9rem, 3vw, 1.2rem);
+        }
+        
+        @media (max-width: 768px) {
+            .login-container {
+                margin: 2vh auto;
+                padding: 1.5rem;
+            }
         }
     </style>
     """, unsafe_allow_html=True)
@@ -1253,7 +1342,68 @@ def login_page():
     </div>
     """, unsafe_allow_html=True)
 
+def display_adaptive_sidebar(current_client: str):
+    """Адаптивная боковая панель"""
+    if st.session_state.is_mobile:
+        # На мобильных устройствах используем expander для боковой панели
+        with st.expander("🎯 Меню", expanded=False):
+            display_sidebar_content(current_client)
+    else:
+        # На планшетах и десктопах обычная боковая панель
+        display_sidebar_content(current_client)
+
+def display_sidebar_content(current_client: str):
+    """Содержимое боковой панели"""
+    st.title("🎯 Навигация")
+    
+    page = st.radio("Выберите раздел:", 
+                   ["📊 Дашборд", "📈 Расширенная аналитика", "💎 Тарифы"],
+                   index=0)
+    
+    if page != st.session_state.current_page:
+        st.session_state.current_page = page
+        st.rerun()
+    
+    st.markdown("---")
+    clients = get_all_clients()
+    new_user = st.selectbox("👥 Выберите клиента:", clients, 
+                          index=clients.index(current_client))
+    
+    if new_user != current_client:
+        st.session_state.current_user = new_user
+        st.rerun()
+    
+    st.markdown("---")
+    
+    st.subheader("📊 Статистика")
+    portfolio_dict = get_portfolio_by_client(current_client)
+    
+    if st.session_state.is_mobile:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Активы", len(portfolio_dict))
+        with col2:
+            client_data = get_client_details(current_client)
+            st.metric("Риск", client_data['risk_profile'])
+    else:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Активы", len(portfolio_dict))
+        with col2:
+            client_data = get_client_details(current_client)
+            st.metric("Риск", client_data['risk_profile'])
+    
+    display_subscription_status(current_client)
+    
+    st.markdown("---")
+    
+    st.subheader("🤖 Советы")
+    recommendations = generate_subscription_based_recommendations(current_client)
+    for rec in recommendations[:2]:
+        st.info(rec)
+
 def display_subscription_status(client_name: str):
+    """Отображение статуса подписки"""
     subscription_level = get_subscription_level(client_name)
     subscription_details = get_subscription_details(client_name)
     
@@ -1284,24 +1434,33 @@ def display_subscription_status(client_name: str):
             st.rerun()
 
 def show_feature_unlock_prompt(feature_name: str, required_level: str, client_name: str):
+    """Показ промпта разблокировки функции"""
     current_level = get_subscription_level(client_name)
     required_plan = SUBSCRIPTION_FEATURES[required_level]
     
     st.warning(f"🔒 **{feature_name} доступна на тарифе {required_plan['name']}**")
     
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
+    if st.session_state.is_mobile:
         st.write(f"**Что вы получите:**")
-        for feature in required_plan['features'][:3]:
+        for feature in required_plan['features'][:2]:
             st.write(f"• {feature}")
-    
-    with col2:
-        if st.button(f"💳 {required_plan['price']}₽/мес", key=f"unlock_{feature_name}"):
+        
+        if st.button(f"💳 {required_plan['price']}₽/мес", key=f"unlock_{feature_name}", use_container_width=True):
             st.session_state.current_page = "💎 Тарифы"
             st.rerun()
+    else:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.write(f"**Что вы получите:**")
+            for feature in required_plan['features'][:3]:
+                st.write(f"• {feature}")
+        with col2:
+            if st.button(f"💳 {required_plan['price']}₽/мес", key=f"unlock_{feature_name}"):
+                st.session_state.current_page = "💎 Тарифы"
+                st.rerun()
 
-def dashboard_page():
+def adaptive_dashboard_page():
+    """Адаптивная главная страница дашборда"""
     current_client = st.session_state.current_user
     client_data = get_client_details(current_client)
     portfolio_dict = get_portfolio_by_client(current_client)
@@ -1316,95 +1475,89 @@ def dashboard_page():
     
     badge_html = display_subscription_badge(subscription_level)
     
-    st.markdown(f'''
-    <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; margin-bottom: 2rem;">
-        <h1 style="color: white; margin-bottom: 0.5rem;">🤖 ЮниВест AI Советник</h1>
-        <h2 style="color: white; margin: 0;">{current_client}</h2>
-        <div style="margin-top: 0.5rem;">
-            {badge_html}
+    # Адаптивный заголовок
+    if st.session_state.is_mobile:
+        st.markdown(f'''
+        <div style="text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; margin-bottom: 1rem;">
+            <h1 style="color: white; margin-bottom: 0.5rem; font-size: 1.5rem;">🤖 ЮниВест AI</h1>
+            <h2 style="color: white; margin: 0; font-size: 1.2rem;">{current_client}</h2>
+            <div style="margin-top: 0.5rem;">
+                {badge_html}
+            </div>
         </div>
-    </div>
-    ''', unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
+    else:
+        st.markdown(f'''
+        <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; margin-bottom: 2rem;">
+            <h1 style="color: white; margin-bottom: 0.5rem;">🤖 ЮниВест AI Советник</h1>
+            <h2 style="color: white; margin: 0;">{current_client}</h2>
+            <div style="margin-top: 0.5rem;">
+                {badge_html}
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([2, 1, 1])
-    
-    with col1:
-        st.markdown(f'<div style="font-size: 1.2rem;">👤 <strong>{current_client}</strong></div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.metric("Инвестиции", f"{client_data['initial_investment']:,.0f} ₽")
-    
-    with col3:
-        if st.button("🚪 Выйти", use_container_width=True, type="secondary"):
-            st.session_state.authenticated = False
-            st.session_state.current_user = None
-            st.rerun()
+    # Адаптивная верхняя панель
+    if st.session_state.is_mobile:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown(f'<div style="font-size: 1.1rem;">👤 <strong>{current_client}</strong></div>', unsafe_allow_html=True)
+        with col2:
+            if st.button("🚪 Выйти", use_container_width=True, type="secondary"):
+                st.session_state.authenticated = False
+                st.session_state.current_user = None
+                st.rerun()
+    else:
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            st.markdown(f'<div style="font-size: 1.2rem;">👤 <strong>{current_client}</strong></div>', unsafe_allow_html=True)
+        with col2:
+            st.metric("Инвестиции", f"{client_data['initial_investment']:,.0f} ₽")
+        with col3:
+            if st.button("🚪 Выйти", use_container_width=True, type="secondary"):
+                st.session_state.authenticated = False
+                st.session_state.current_user = None
+                st.rerun()
     
     st.markdown("---")
     
-    with st.sidebar:
-        st.title("🎯 Навигация")
-        
-        page = st.radio("Выберите раздел:", 
-                       ["📊 Дашборд", "📈 Расширенная аналитика", "💎 Тарифы"],
-                       index=0)
-        
-        if page != st.session_state.current_page:
-            st.session_state.current_page = page
-            st.rerun()
-        
-        st.markdown("---")
-        clients = get_all_clients()
-        new_user = st.selectbox("👥 Выберите клиента:", clients, 
-                              index=clients.index(current_client))
-        
-        if new_user != current_client:
-            st.session_state.current_user = new_user
-            st.rerun()
-        
-        st.markdown("---")
-        
-        st.subheader("📊 Статистика")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Активы", len(portfolio_dict))
-        with col2:
-            st.metric("Риск", client_data['risk_profile'])
-        
-        display_subscription_status(current_client)
-        
-        st.markdown("---")
-        
-        st.subheader("🤖 Советы")
-        recommendations = generate_subscription_based_recommendations(current_client)
-        for rec in recommendations[:2]:
-            st.info(rec)
-    
+    # Адаптивный профиль клиента
     st.subheader("👤 Профиль клиента")
-    col1, col2 = st.columns(2)
-    
-    with col1:
+    if st.session_state.is_mobile:
         st.write(f"**Тип портфеля:** {client_data['portfolio_type']}")
         st.write(f"**Уровень риска:** {client_data['risk_profile']}")
         st.write(f"**Инвестиционный горизонт:** {client_data['investment_horizon']}")
-    
-    with col2:
         st.write(f"**Опыт:** {client_data['experience']}")
         st.write(f"**Цель:** {client_data['financial_goals']}")
         st.write(f"**Целевая сумма:** {client_data['target_amount']:,.0f} ₽")
+    else:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**Тип портфеля:** {client_data['portfolio_type']}")
+            st.write(f"**Уровень риска:** {client_data['risk_profile']}")
+            st.write(f"**Инвестиционный горизонт:** {client_data['investment_horizon']}")
+        with col2:
+            st.write(f"**Опыт:** {client_data['experience']}")
+            st.write(f"**Цель:** {client_data['financial_goals']}")
+            st.write(f"**Целевая сумма:** {client_data['target_amount']:,.0f} ₽")
     
+    # Адаптивный обзор портфеля
     st.subheader("📊 Обзор портфеля")
     weights_df = pd.DataFrame(list(portfolio_dict.items()), columns=['Актив', 'Доля'])
     
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
+    if st.session_state.is_mobile:
+        st.dataframe(weights_df, use_container_width=True, hide_index=True)
         fig_pie = px.pie(weights_df, values='Доля', names='Актив', hole=0.3)
         st.plotly_chart(fig_pie, use_container_width=True)
+    else:
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            fig_pie = px.pie(weights_df, values='Доля', names='Актив', hole=0.3)
+            st.plotly_chart(fig_pie, use_container_width=True)
+        with col2:
+            st.dataframe(weights_df, use_container_width=True, hide_index=True)
     
-    with col2:
-        st.dataframe(weights_df, use_container_width=True, hide_index=True)
-    
+    # Анализ портфеля
     with st.spinner("🔍 Проводим комплексный анализ портфеля..."):
         analyzer = AdvancedPortfolioAnalysis(portfolio_dict, current_client)
         results = analyzer.comprehensive_analysis()
@@ -1426,7 +1579,8 @@ def dashboard_page():
     else:
         st.error("❌ Не удалось провести анализ портфеля")
 
-def advanced_analytics_page():
+def adaptive_advanced_analytics_page():
+    """Адаптивная страница расширенной аналитики"""
     current_client = st.session_state.current_user
     subscription_level = get_subscription_level(current_client)
     
@@ -1464,15 +1618,15 @@ def advanced_analytics_page():
         for recommendation in results.get('recommendations', []):
             st.info(recommendation)
 
-def display_pricing_page():
+def adaptive_pricing_page():
+    """Адаптивная страница тарифов"""
     st.title("💎 Выберите свой тариф")
     st.write("Начните с бесплатного базового тарифа и улучшайте по мере роста ваших потребностей")
     
-    col1, col2, col3 = st.columns(3)
-    
-    for i, level in enumerate(['basic', 'advanced', 'premium']):
-        plan = SUBSCRIPTION_FEATURES[level]
-        with [col1, col2, col3][i]:
+    if st.session_state.is_mobile:
+        # Мобильная версия - вертикальное расположение
+        for level in ['basic', 'advanced', 'premium']:
+            plan = SUBSCRIPTION_FEATURES[level]
             badge_html = display_subscription_badge(level)
             st.markdown(f"<div style='text-align: center; margin-bottom: 1rem;'>{badge_html}</div>", unsafe_allow_html=True)
             
@@ -1480,29 +1634,67 @@ def display_pricing_page():
             st.metric("Стоимость", f"{plan['price']}₽/мес")
             
             st.write("**Включено:**")
-            for feature in plan['features'][:6]:
+            for feature in plan['features'][:4]:
                 st.write(f"✅ {feature}")
             
             if level == 'basic':
                 st.button("🎁 Начать бесплатно", key=f"btn_{level}", use_container_width=True, type="primary")
             else:
                 st.button(f"💳 Выбрать {plan['name']}", key=f"btn_{level}", use_container_width=True)
+            
+            st.markdown("---")
+    else:
+        # Десктопная версия - горизонтальное расположение
+        col1, col2, col3 = st.columns(3)
+        
+        for i, level in enumerate(['basic', 'advanced', 'premium']):
+            plan = SUBSCRIPTION_FEATURES[level]
+            with [col1, col2, col3][i]:
+                badge_html = display_subscription_badge(level)
+                st.markdown(f"<div style='text-align: center; margin-bottom: 1rem;'>{badge_html}</div>", unsafe_allow_html=True)
+                
+                st.subheader(plan['name'])
+                st.metric("Стоимость", f"{plan['price']}₽/мес")
+                
+                st.write("**Включено:**")
+                for feature in plan['features'][:6]:
+                    st.write(f"✅ {feature}")
+                
+                if level == 'basic':
+                    st.button("🎁 Начать бесплатно", key=f"btn_{level}", use_container_width=True, type="primary")
+                else:
+                    st.button(f"💳 Выбрать {plan['name']}", key=f"btn_{level}", use_container_width=True)
 
 def main():
+    """Главная функция приложения"""
+    # Инициализация и настройка
+    setup_page_config()
     init_session_state()
+    inject_adaptive_css()
     
     if not st.session_state.authenticated:
-        login_page()
+        adaptive_login_page()
     else:
-        if st.session_state.current_page == "📊 Дашборд":
-            dashboard_page()
-        elif st.session_state.current_page == "📈 Расширенная аналитика":
-            advanced_analytics_page()
-        elif st.session_state.current_page == "💎 Тарифы":
-            display_pricing_page()
+        # Адаптивный layout
+        if st.session_state.is_mobile:
+            # Мобильная версия - без боковой панели
+            adaptive_dashboard_page()
+        else:
+            # Версия для планшетов и десктопов - с боковой панелью
+            with st.sidebar:
+                display_adaptive_sidebar(st.session_state.current_user)
+            
+            # Основной контент
+            if st.session_state.current_page == "📊 Дашборд":
+                adaptive_dashboard_page()
+            elif st.session_state.current_page == "📈 Расширенная аналитика":
+                adaptive_advanced_analytics_page()
+            elif st.session_state.current_page == "💎 Тарифы":
+                adaptive_pricing_page()
 
 if __name__ == "__main__":
     main()
+
 
 
 
