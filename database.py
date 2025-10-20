@@ -698,7 +698,163 @@ def calculate_portfolio_risk(portfolio: Dict[str, float]) -> float:
     """Упрощенный расчет риска портфеля"""
     # Веса рисков для разных типов активов
     risk_weights = {
-        'high_risk': ['TSLA', 'NVDA', 'AMD', '
+        'high_risk': ['TSLA', 'NVDA', 'AMD', 'SQ', 'ARKK', 'BTC-USD', 'ETH-USD'],
+        'medium_risk': ['AAPL', 'MSFT', 'VTI', 'VXUS', 'VNQ', 'VYM', 'SCHD'],
+        'low_risk': ['BND', 'GOVT', 'SHY', 'JNJ', 'PG', 'XOM', 'T', 'VZ', 'Cash', 'GLD']
+    }
+    
+    total_risk = 0
+    for asset, weight in portfolio.items():
+        if asset in risk_weights['high_risk']:
+            total_risk += weight * 0.8
+        elif asset in risk_weights['medium_risk']:
+            total_risk += weight * 0.5
+        else:
+            total_risk += weight * 0.2
+    
+    return min(total_risk, 1.0)
+
+# ОБНОВЛЕННАЯ ФУНКЦИЯ РЕКОМЕНДАЦИЙ
+def generate_client_recommendations(client_name: str) -> List[str]:
+    """Генерирует реалистичные и точные рекомендации для клиента"""
+    client_data = CLIENTS_DETAILED_DATA.get(client_name)
+    if not client_data:
+        return ["💡 Информация о клиенте не найдена"]
+    
+    portfolio = get_portfolio_by_client(client_name)
+    if not portfolio:
+        return ["💡 Портфель клиента не найден"]
+    
+    recommendations = []
+    
+    # Персонализированное приветствие
+    recommendations.append(f"👤 **Персональные рекомендации для {client_name}**")
+    
+    # Анализ диверсификации
+    diversification_recs = analyze_diversification(portfolio, client_data)
+    recommendations.extend(diversification_recs)
+    
+    # Анализ риска
+    risk_recs = analyze_risk_profile(portfolio, client_data)
+    recommendations.extend(risk_recs)
+    
+    # Анализ распределения активов
+    allocation_recs = analyze_asset_allocation(portfolio, client_data)
+    recommendations.extend(allocation_recs)
+    
+    # Тактические рекомендации
+    tactical_recs = generate_tactical_recommendations(client_data)
+    recommendations.extend(tactical_recs[:2])  # Берем 2 самые важные
+    
+    # Общие рекомендации
+    general_recs = generate_general_recommendations(client_data)
+    recommendations.extend(general_recs[:2])  # Берем 2 самые важные
+    
+    return recommendations[:8]  # Ограничиваем 8 рекомендациями
+
+# ФУНКЦИЯ ДЛЯ РЕКОМЕНДАЦИЙ С УЧЕТОМ ПОДПИСКИ - ОБНОВЛЕННАЯ ДЛЯ 3 УРОВНЕЙ
+def generate_subscription_based_recommendations(client_name: str) -> List[str]:
+    """Генерирует рекомендации в зависимости от уровня подписки"""
+    level = get_subscription_level(client_name)
+    base_recommendations = generate_client_recommendations(client_name)
+    
+    # Добавляем явные сообщения о подписке
+    subscription_messages = {
+        'basic': [
+            "🎁 **Бесплатный тариф**: Доступны базовые функции анализа",
+            "🚀 **Улучшите до Продвинутого**: Получите оптимизацию портфеля и анализ рисков за 450 руб/мес"
+        ],
+        'advanced': [
+            "🎯 **Продвинутый тариф**: Доступны расширенная аналитика и оптимизация",
+            "💎 **Улучшите до Премиум**: Получите AI-прогнозы и персонального советника за 800 руб/мес"
+        ],
+        'premium': [
+            "💎 **Премиум тариф**: Полный доступ ко всем функциям",
+            "🤖 **AI-советник**: Ваш персональный финансовый эксперт всегда на связи"
+        ]
+    }
+    
+    if level == 'basic':
+        return base_recommendations[:4] + subscription_messages['basic']
+    
+    elif level == 'advanced':
+        # Добавляем тактические рекомендации
+        advanced_recs = [
+            "🎯 **Тактическая рекомендация**: Рассмотрите увеличение доли технологических акций на 3-5%",
+            "📊 **Анализ рисков**: Текущий VaR на приемлемом уровне (-2.3%)",
+            "🔄 **Оптимизация**: Рекомендуемая ребалансировка - 2.3% в облигации"
+        ]
+        return base_recommendations + advanced_recs[:2] + subscription_messages['advanced']
+    
+    else:  # premium
+        # Добавляем премиум рекомендации
+        premium_recs = [
+            "🤖 **AI-прогноз**: Ожидается рост на 4.5% в следующем месяце с уверенностью 78%",
+            "🏆 **Сравнение с эталоном**: Ваш портфель превосходит S&P 500 на 3.1%",
+            "💎 **Премиум-совет**: Рекомендуем хеджирование опционами для защиты прибыли",
+            "🚀 **Эксклюзивная идея**: Рассмотрите добавление AI-ETF для диверсификации"
+        ]
+        ai_insights = get_ml_insights(client_name)
+        return base_recommendations + premium_recs[:3] + ai_insights[:2] + subscription_messages['premium']
+
+# Функция для получения всех данных клиента (удобно для Streamlit)
+def get_complete_client_data(client_name: str) -> Optional[Dict]:
+    """Возвращает полные данные клиента включая портфель"""
+    client_data = get_client_details(client_name)
+    if not client_data:
+        return None
+    
+    portfolio = get_portfolio_by_client(client_name)
+    recommendations = generate_subscription_based_recommendations(client_name)
+    
+    return {
+        'client_info': client_data,
+        'portfolio': portfolio,
+        'recommendations': recommendations,
+        'subscription': get_subscription_details(client_name)
+    }
+
+# ТЕСТИРОВАНИЕ ПОДПИСОК
+def test_subscriptions():
+    """Быстрая проверка подписок"""
+    print("=== ТЕСТ ПОДПИСОК ===")
+    clients = get_all_clients()
+    for client in clients:
+        level = get_subscription_level(client)
+        details = get_subscription_details(client)
+        print(f"{client}: {level} - {details['name']} ({details['price']} руб)")
+        
+        # Проверяем доступ
+        advanced = can_access_advanced_analytics(client)
+        premium = can_access_premium_features(client)
+        print(f"  Advanced: {advanced}, Premium: {premium}")
+        
+        # Тестируем рекомендации
+        recs = generate_subscription_based_recommendations(client)
+        print(f"  Рекомендации ({len(recs)}):")
+        for rec in recs[:2]:
+            print(f"    - {rec}")
+
+# Пример использования
+if __name__ == "__main__":
+    # Инициализация базы данных
+    db = PortfolioDatabase()
+    
+    # Тестируем подписки
+    test_subscriptions()
+    
+    print("\n" + "="*50)
+    print("Демо-портфели:")
+    portfolios = get_all_portfolios()
+    for name, description in portfolios:
+        print(f"- {name}: {description}")
+    
+    print("\nДетали агрессивного портфеля:")
+    aggressive = get_portfolio("агрессивный")
+    if aggressive:
+        for ticker, weight in aggressive.items():
+            print(f"  {ticker}: {weight:.1%}")
+
 
 
 
