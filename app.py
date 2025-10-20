@@ -1,4 +1,4 @@
-# app.py - полностью адаптивная версия С УСИЛЕННЫМИ ПРОДВИНУТЫМ И ПРЕМИУМ УРОВНЯМИ
+# app.py - полностью адаптивная версия СО ВСЕМИ ПОКАЗАТЕЛЯМИ И TOOLTIP'АМИ
 
 import streamlit as st
 import pandas as pd
@@ -8,14 +8,14 @@ import plotly.express as px
 from datetime import datetime
 import hashlib
 
-# advanced_analysis.py - усложненная версия прямо в app.py
+# advanced_analysis.py - расширенная версия прямо в app.py
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Optional, Tuple
 import streamlit as st
 
 class AdvancedPortfolioAnalysis:
-    """Усовершенствованный класс для анализа портфеля"""
+    """Усовершенствованный класс для анализа портфеля со всеми показателями"""
     
     def __init__(self, portfolio_dict: Dict[str, float], client_name: str = "Демо Клиент"):
         self.portfolio_dict = portfolio_dict
@@ -37,12 +37,13 @@ class AdvancedPortfolioAnalysis:
         }
     
     def calculate_basic_metrics(self) -> Dict:
-        """Расчет базовых метрик"""
+        """Расчет базовых метрик для всех пользователей"""
         return {
             'annual_return': 0.12,
             'annual_volatility': 0.18,
             'sharpe_ratio': 0.67,
             'max_drawdown': -0.15,
+            'beta': 1.12,
             'current_value': 1500000,
             'total_return': 0.25,
             'client_name': self.client_name
@@ -64,6 +65,27 @@ class AdvancedPortfolioAnalysis:
             'stress_test_covid': -0.28
         }
     
+    def calculate_efficiency_metrics(self) -> Dict:
+        """Метрики эффективности для продвинутых и премиум пользователей"""
+        return {
+            # Базовые
+            'sharpe_ratio': 0.67,
+            'sortino_ratio': 0.89,
+            'beta': 1.12,
+            
+            # Продвинутые
+            'treynor_ratio': 0.107,
+            'm_squared': 0.045,
+            'jensen_alpha': 0.023,
+            
+            # Премиум
+            'modigliani_ratio': 0.028,
+            'information_ratio': 0.15,
+            'tracking_error': 0.045,
+            'downside_deviation': 0.08,
+            'calmar_ratio': 0.80
+        }
+    
     def analyze_portfolio_quality(self) -> Dict:
         """Анализ качества портфеля"""
         return {
@@ -73,19 +95,6 @@ class AdvancedPortfolioAnalysis:
             'sector_diversification': self.analyze_sector_diversification(),
             'asset_allocation_score': 0.85,
             'liquidity_score': 0.90
-        }
-    
-    def calculate_efficiency_metrics(self) -> Dict:
-        """Метрики эффективности"""
-        return {
-            'sortino_ratio': 0.89,
-            'calmar_ratio': 0.80,
-            'information_ratio': 0.15,
-            'tracking_error': 0.045,
-            'alpha': 0.023,
-            'beta': 1.12,
-            'r_squared': 0.85,
-            'treynor_ratio': 0.107
         }
     
     def benchmark_comparison(self) -> Dict:
@@ -139,7 +148,68 @@ class AdvancedPortfolioAnalysis:
             "🌍 **Диверсификация**: Добавить exposure к развивающимся рынкам"
         ]
 
-def display_portfolio_analysis(results: Dict) -> None:
+# TOOLTIP'Ы ДЛЯ ПОКАЗАТЕЛЕЙ
+TOOLTIPS = {
+    # БАЗОВЫЕ ПОКАЗАТЕЛИ
+    'sharpe_ratio': "📊 **Коэффициент Шарпа**\n\nПоказывает, насколько хорошо доходность компенсирует риск. Чем выше - тем лучше баланс между риском и доходностью.\n\n• <1.0 - можно улучшить\n• 1.0-2.0 - хорошо\n• >2.0 - отлично",
+    
+    'beta': "📈 **Бета-коэффициент**\n\nЧувствительность портфеля к рынку:\n\n• <0 - движется против рынка\n• 0-1 - менее волатилен чем рынок\n• 1 - как рынок\n• >1 - более волатилен чем рынок",
+    
+    'max_drawdown': "📉 **Максимальная просадка**\n\nСамое большое падение стоимости портфеля от пика до минимума. Показывает ваш худший сценарий.",
+    
+    'annual_return': "💰 **Годовая доходность**\n\nСредняя доходность в годовом выражении. Учитывает сложный процент.",
+    
+    'annual_volatility': "⚡ **Волатильность**\n\nМера риска - насколько сильно 'колеблется' стоимость портфеля. Чем выше - тем непредсказуемее результат.",
+    
+    # ПРОДВИНУТЫЕ ПОКАЗАТЕЛИ
+    'sortino_ratio': "🎯 **Коэффициент Сортино**\n\nКак Шарп, но учитывает только 'плохую' волатильность (убытки). Более точный для оценки риска.",
+    
+    'treynor_ratio': "🏆 **Коэффициент Трейнора**\n\nНасколько вы превосходите безрисковые вложения (например, гособлигации). Чем выше - тем лучше.",
+    
+    'm_squared': "📊 **М-квадрат**\n\nСравнивает эффективность с поправкой на риск. Помогает выбрать между разными портфелями.",
+    
+    'jensen_alpha': "α **Альфа Дженсена**\n\nПоказывает, насколько ваша стратегия лучше пассивного инвестирования. Положительная альфа - вы молодец!",
+    
+    'parametric_var_95': "🛡️ **Value at Risk (95%)**\n\nМаксимальные потери с вероятностью 95%. 'В худшем случае вы потеряете не более X%'",
+    
+    'cvar_95': "⚡ **Conditional VaR**\n\nСредние потери в тех 5% худших сценариев. 'Если уже случилось плохое, то в среднем потеряете X%'",
+    
+    # ПРЕМИУМ ПОКАЗАТЕЛИ
+    'modigliani_ratio': "💎 **Коэффициент Модильяни**\n\nНасколько ваш портфель эффективнее рынка при том же уровне риска. Золотой стандарт оценки.",
+    
+    'information_ratio': "🎯 **Information Ratio**\n\nКачество активного управления. Показывает стабильность превосходства над рынком.",
+    
+    'tracking_error': "📏 **Tracking Error**\n\nНасколько ваш портфель отклоняется от эталона (например, S&P500). Мера 'активности' управления.",
+    
+    'calmar_ratio': "⚖️ **Коэффициент Калмара**\n\nДоходность относительно максимальной просадки. Особенно важен для долгосрочных инвесторов."
+}
+
+def create_tooltip(metric_name: str) -> str:
+    """Создает HTML для tooltip'а"""
+    tooltip_text = TOOLTIPS.get(metric_name, "Информация о показателе")
+    return f'''
+    <div class="tooltip">
+        <span class="tooltip-icon">❓</span>
+        <span class="tooltip-text">{tooltip_text}</span>
+    </div>
+    '''
+
+def display_metric_with_tooltip(label: str, value: str, metric_name: str, help_text: str = None):
+    """Отображает метрику с tooltip'ом"""
+    col1, col2 = st.columns([4, 1])
+    
+    with col1:
+        st.metric(label, value)
+    
+    with col2:
+        if help_text:
+            st.markdown(f"""
+            <div style="margin-top: 1.5rem;">
+                {create_tooltip(metric_name)}
+            </div>
+            """, unsafe_allow_html=True)
+
+def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
     """Улучшенное отображение анализа с разными уровнями доступа"""
     if not results:
         st.error("Нет данных для отображения")
@@ -151,43 +221,88 @@ def display_portfolio_analysis(results: Dict) -> None:
         st.error("Отсутствуют базовые метрики")
         return
     
-    # Основные метрики
+    # ОСНОВНЫЕ МЕТРИКИ (для всех)
+    st.subheader("📊 Основные показатели")
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Годовая доходность", f"{metrics.get('annual_return', 0):.1%}")
+        display_metric_with_tooltip(
+            "Годовая доходность", 
+            f"{metrics.get('annual_return', 0):.1%}", 
+            'annual_return'
+        )
     
     with col2:
-        st.metric("Волатильность", f"{metrics.get('annual_volatility', 0):.1%}")
+        display_metric_with_tooltip(
+            "Волатильность", 
+            f"{metrics.get('annual_volatility', 0):.1%}", 
+            'annual_volatility'
+        )
     
     with col3:
-        st.metric("Коэффициент Шарпа", f"{metrics.get('sharpe_ratio', 0):.2f}")
+        display_metric_with_tooltip(
+            "Коэффициент Шарпа", 
+            f"{metrics.get('sharpe_ratio', 0):.2f}", 
+            'sharpe_ratio'
+        )
     
     with col4:
-        st.metric("Макс. просадка", f"{metrics.get('max_drawdown', 0):.1%}")
+        display_metric_with_tooltip(
+            "Макс. просадка", 
+            f"{metrics.get('max_drawdown', 0):.1%}", 
+            'max_drawdown'
+        )
     
-    # Расширенные метрики эффективности
+    # БЕТА (для всех)
+    st.subheader("📈 Чувствительность к рынку")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        display_metric_with_tooltip(
+            "Бета-коэффициент", 
+            f"{metrics.get('beta', 0):.2f}", 
+            'beta'
+        )
+    
+    # ПРОДВИНУТЫЕ МЕТРИКИ ЭФФЕКТИВНОСТИ
     efficiency_metrics = results.get('efficiency_metrics', {})
-    if efficiency_metrics:
-        st.subheader("📈 Метрики эффективности")
+    if efficiency_metrics and subscription_level in ['advanced', 'premium']:
+        st.subheader("🎯 Продвинутые метрики эффективности")
+        
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("Коэф. Сортино", f"{efficiency_metrics.get('sortino_ratio', 0):.2f}")
+            display_metric_with_tooltip(
+                "Коэф. Сортино", 
+                f"{efficiency_metrics.get('sortino_ratio', 0):.2f}", 
+                'sortino_ratio'
+            )
         
         with col2:
-            st.metric("Коэф. Калмара", f"{efficiency_metrics.get('calmar_ratio', 0):.2f}")
+            display_metric_with_tooltip(
+                "Коэф. Трейнора", 
+                f"{efficiency_metrics.get('treynor_ratio', 0):.3f}", 
+                'treynor_ratio'
+            )
         
         with col3:
-            st.metric("Alpha", f"{efficiency_metrics.get('alpha', 0):.3f}")
+            display_metric_with_tooltip(
+                "М-квадрат", 
+                f"{efficiency_metrics.get('m_squared', 0):.3f}", 
+                'm_squared'
+            )
         
         with col4:
-            st.metric("Beta", f"{efficiency_metrics.get('beta', 0):.2f}")
+            display_metric_with_tooltip(
+                "Альфа Дженсена", 
+                f"{efficiency_metrics.get('jensen_alpha', 0):.3f}", 
+                'jensen_alpha'
+            )
 
-def display_advanced_risk_analysis(results: Dict) -> None:
+def display_advanced_risk_analysis(results: Dict, subscription_level: str) -> None:
     """Отображение расширенного анализа рисков"""
     risk_metrics = results.get('risk_metrics', {})
-    if not risk_metrics:
+    if not risk_metrics or subscription_level not in ['advanced', 'premium']:
         return
     
     st.subheader("🎯 Расширенный анализ рисков")
@@ -196,31 +311,67 @@ def display_advanced_risk_analysis(results: Dict) -> None:
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("VaR (95%)", f"{risk_metrics.get('parametric_var_95', 0):.2%}")
+        display_metric_with_tooltip(
+            "VaR (95%)", 
+            f"{risk_metrics.get('parametric_var_95', 0):.2%}", 
+            'parametric_var_95'
+        )
     
     with col2:
-        st.metric("CVaR (95%)", f"{risk_metrics.get('cvar_95', 0):.2%}")
+        display_metric_with_tooltip(
+            "CVaR (95%)", 
+            f"{risk_metrics.get('cvar_95', 0):.2%}", 
+            'cvar_95'
+        )
     
     with col3:
         st.metric("VaR (99%)", f"{risk_metrics.get('parametric_var_99', 0):.2%}")
     
     with col4:
         st.metric("CVaR (99%)", f"{risk_metrics.get('cvar_99', 0):.2%}")
+
+def display_premium_efficiency_metrics(results: Dict, subscription_level: str) -> None:
+    """Премиум метрики эффективности"""
+    efficiency_metrics = results.get('efficiency_metrics', {})
+    if not efficiency_metrics or subscription_level != 'premium':
+        return
     
-    # Stress testing
-    st.subheader("🛡️ Stress Testing")
-    col1, col2 = st.columns(2)
+    st.subheader("💎 Премиум метрики эффективности")
+    
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Кризис 2008", f"{risk_metrics.get('stress_test_2008', 0):.1%}")
+        display_metric_with_tooltip(
+            "Коэф. Модильяни", 
+            f"{efficiency_metrics.get('modigliani_ratio', 0):.3f}", 
+            'modigliani_ratio'
+        )
     
     with col2:
-        st.metric("Пандемия 2020", f"{risk_metrics.get('stress_test_covid', 0):.1%}")
+        display_metric_with_tooltip(
+            "Information Ratio", 
+            f"{efficiency_metrics.get('information_ratio', 0):.3f}", 
+            'information_ratio'
+        )
+    
+    with col3:
+        display_metric_with_tooltip(
+            "Tracking Error", 
+            f"{efficiency_metrics.get('tracking_error', 0):.3f}", 
+            'tracking_error'
+        )
+    
+    with col4:
+        display_metric_with_tooltip(
+            "Коэф. Калмара", 
+            f"{efficiency_metrics.get('calmar_ratio', 0):.2f}", 
+            'calmar_ratio'
+        )
 
-def display_portfolio_quality(results: Dict) -> None:
+def display_portfolio_quality(results: Dict, subscription_level: str) -> None:
     """Отображение качества портфеля"""
     portfolio_quality = results.get('portfolio_quality', {})
-    if not portfolio_quality:
+    if not portfolio_quality or subscription_level not in ['advanced', 'premium']:
         return
     
     st.subheader("🏆 Качество портфеля")
@@ -247,8 +398,11 @@ def display_portfolio_quality(results: Dict) -> None:
                        title="Корреляция между активами")
         st.plotly_chart(fig, use_container_width=True)
 
-def display_premium_analytics(results: Dict) -> None:
+def display_premium_analytics(results: Dict, subscription_level: str) -> None:
     """Премиум аналитика"""
+    if subscription_level != 'premium':
+        return
+    
     st.subheader("💎 Премиум аналитика")
     
     # AI инсайты
@@ -301,6 +455,67 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# CSS ДЛЯ TOOLTIP'ОВ
+st.markdown("""
+<style>
+.tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.tooltip .tooltip-icon {
+    color: #666;
+    font-size: 0.9em;
+    padding: 2px 6px;
+    border-radius: 50%;
+    background: #f0f0f0;
+}
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 300px;
+    background-color: #333;
+    color: white;
+    text-align: left;
+    border-radius: 6px;
+    padding: 12px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -150px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.9em;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+.tooltip .tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+.metric-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+</style>
+""", unsafe_allow_html=True)
 
 def hash_password(password):
     """Хеширование пароля"""
@@ -510,6 +725,7 @@ def display_pricing_page():
 def advanced_analytics_page():
     """УЛУЧШЕННАЯ страница расширенной аналитики"""
     current_client = st.session_state.current_user
+    subscription_level = get_subscription_level(current_client)
     
     st.title("📈 Расширенная аналитика")
     
@@ -535,21 +751,19 @@ def advanced_analytics_page():
     
     if results:
         # Базовые метрики
-        display_portfolio_analysis(results)
+        display_portfolio_analysis(results, subscription_level)
         
-        # Расширенный анализ рисков (только для advanced+)
-        display_advanced_risk_analysis(results)
+        # Продвинутые метрики эффективности
+        display_advanced_risk_analysis(results, subscription_level)
         
-        # Качество портфеля (только для advanced+)
-        display_portfolio_quality(results)
+        # Премиум метрики эффективности
+        display_premium_efficiency_metrics(results, subscription_level)
         
-        # Премиум аналитика (только для premium)
-        if can_access_premium_features(current_client):
-            display_premium_analytics(results)
-        else:
-            st.info("💎 **AI-инсайты и расширенная аналитика доступны в Премиум тарифе**")
-            if st.button("💎 Перейти на Премиум", key="upgrade_analytics"):
-                show_feature_unlock_prompt("AI-аналитика", "premium", current_client)
+        # Качество портфеля
+        display_portfolio_quality(results, subscription_level)
+        
+        # Премиум аналитика
+        display_premium_analytics(results, subscription_level)
         
         # Рекомендации
         st.subheader("📋 Детальные рекомендации")
@@ -566,18 +780,6 @@ def dashboard_page():
     if not client_data or not portfolio_dict:
         st.error("❌ Ошибка загрузки данных")
         return
-    
-    # ОТЛАДОЧНАЯ ИНФОРМАЦИЯ
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🔧 Отладка подписок")
-    subscription_level = get_subscription_level(current_client)
-    subscription_details = get_subscription_details(current_client)
-    st.sidebar.write(f"**Клиент:** {current_client}")
-    st.sidebar.write(f"**Уровень:** {subscription_level}")
-    st.sidebar.write(f"**Название:** {subscription_details['name']}")
-    st.sidebar.write(f"**Цена:** {subscription_details['price']} руб")
-    st.sidebar.write(f"**Advanced доступ:** {can_access_advanced_analytics(current_client)}")
-    st.sidebar.write(f"**Premium доступ:** {can_access_premium_features(current_client)}")
     
     # Определяем уровень доступа
     has_advanced_access = can_access_advanced_analytics(current_client)
@@ -689,19 +891,35 @@ def dashboard_page():
     with col2:
         st.dataframe(weights_df, use_container_width=True, hide_index=True)
     
-    # 3. Ключевые метрики
+    # 3. Ключевые метрики с tooltip'ами
     st.subheader("🔍 Ключевые метрики")
     portfolio_metrics = create_portfolio_metrics(client_data, portfolio_dict)
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Ожидаемая доходность", f"{portfolio_metrics['expected_return']:.1%}")
+        display_metric_with_tooltip(
+            "Ожидаемая доходность", 
+            f"{portfolio_metrics['expected_return']:.1%}", 
+            'annual_return'
+        )
     with col2:
-        st.metric("Волатильность", f"{portfolio_metrics['volatility']:.1%}")
+        display_metric_with_tooltip(
+            "Волатильность", 
+            f"{portfolio_metrics['volatility']:.1%}", 
+            'annual_volatility'
+        )
     with col3:
-        st.metric("Коэффициент Шарпа", f"{portfolio_metrics['sharpe_ratio']:.2f}")
+        display_metric_with_tooltip(
+            "Коэффициент Шарпа", 
+            f"{portfolio_metrics['sharpe_ratio']:.2f}", 
+            'sharpe_ratio'
+        )
     with col4:
-        st.metric("Макс. просадка", f"{portfolio_metrics['max_drawdown']:.1%}")
+        display_metric_with_tooltip(
+            "Макс. просадка", 
+            f"{portfolio_metrics['max_drawdown']:.1%}", 
+            'max_drawdown'
+        )
     
     # 4. Рекомендации AI - РАЗНЫЕ ДЛЯ РАЗНЫХ ПОДПИСОК
     st.subheader("🤖 Рекомендации AI")
