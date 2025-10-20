@@ -208,6 +208,12 @@ def display_metric_with_tooltip(label: str, value: str, metric_name: str, help_t
                 {create_tooltip(metric_name)}
             </div>
             """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style="margin-top: 1.5rem;">
+                {create_tooltip(metric_name)}
+            </div>
+            """, unsafe_allow_html=True)
 
 def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
     """Улучшенное отображение анализа с разными уровнями доступа"""
@@ -254,7 +260,6 @@ def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
         )
     
     # БЕТА (для всех)
-    st.subheader("📈 Чувствительность к рынку")
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -604,18 +609,73 @@ def login_page():
     </div>
     """, unsafe_allow_html=True)
 
-def create_portfolio_metrics(client_data, portfolio_dict):
-    """Создает метрики для портфеля"""
+def create_portfolio_metrics(client_data, portfolio_dict, subscription_level: str):
+    """Создает метрики для портфеля с учетом уровня подписки"""
     portfolio_type = client_data['portfolio_type']
     
-    metrics_map = {
-        'агрессивный': {'expected_return': 0.18, 'volatility': 0.32, 'sharpe_ratio': 0.56, 'max_drawdown': -0.40},
-        'сбалансированный': {'expected_return': 0.095, 'volatility': 0.14, 'sharpe_ratio': 0.68, 'max_drawdown': -0.20},
-        'доходный': {'expected_return': 0.078, 'volatility': 0.11, 'sharpe_ratio': 0.71, 'max_drawdown': -0.15},
-        'ультра-консервативный': {'expected_return': 0.045, 'volatility': 0.05, 'sharpe_ratio': 0.90, 'max_drawdown': -0.08}
+    # Базовые метрики для всех
+    base_metrics = {
+        'агрессивный': {
+            'expected_return': 0.18, 'volatility': 0.32, 'sharpe_ratio': 0.56, 
+            'max_drawdown': -0.40, 'beta': 1.25
+        },
+        'сбалансированный': {
+            'expected_return': 0.095, 'volatility': 0.14, 'sharpe_ratio': 0.68, 
+            'max_drawdown': -0.20, 'beta': 0.95
+        },
+        'доходный': {
+            'expected_return': 0.078, 'volatility': 0.11, 'sharpe_ratio': 0.71, 
+            'max_drawdown': -0.15, 'beta': 0.75
+        },
+        'ультра-консервативный': {
+            'expected_return': 0.045, 'volatility': 0.05, 'sharpe_ratio': 0.90, 
+            'max_drawdown': -0.08, 'beta': 0.35
+        }
     }
     
-    return metrics_map.get(portfolio_type, metrics_map['сбалансированный'])
+    metrics = base_metrics.get(portfolio_type, base_metrics['сбалансированный'])
+    
+    # Добавляем продвинутые метрики для advanced и premium
+    if subscription_level in ['advanced', 'premium']:
+        advanced_metrics = {
+            'агрессивный': {
+                'sortino_ratio': 0.72, 'treynor_ratio': 0.144, 'm_squared': 0.038,
+                'jensen_alpha': 0.028, 'calmar_ratio': 0.45
+            },
+            'сбалансированный': {
+                'sortino_ratio': 0.85, 'treynor_ratio': 0.100, 'm_squared': 0.025,
+                'jensen_alpha': 0.015, 'calmar_ratio': 0.48
+            },
+            'доходный': {
+                'sortino_ratio': 0.88, 'treynor_ratio': 0.104, 'm_squared': 0.022,
+                'jensen_alpha': 0.012, 'calmar_ratio': 0.52
+            },
+            'ультра-консервативный': {
+                'sortino_ratio': 1.05, 'treynor_ratio': 0.129, 'm_squared': 0.018,
+                'jensen_alpha': 0.008, 'calmar_ratio': 0.56
+            }
+        }
+        metrics.update(advanced_metrics.get(portfolio_type, {}))
+    
+    # Добавляем премиум метрики только для premium
+    if subscription_level == 'premium':
+        premium_metrics = {
+            'агрессивный': {
+                'modigliani_ratio': 0.035, 'information_ratio': 0.18, 'tracking_error': 0.068
+            },
+            'сбалансированный': {
+                'modigliani_ratio': 0.022, 'information_ratio': 0.12, 'tracking_error': 0.045
+            },
+            'доходный': {
+                'modigliani_ratio': 0.018, 'information_ratio': 0.10, 'tracking_error': 0.038
+            },
+            'ультра-консервативный': {
+                'modigliani_ratio': 0.012, 'information_ratio': 0.08, 'tracking_error': 0.025
+            }
+        }
+        metrics.update(premium_metrics.get(portfolio_type, {}))
+    
+    return metrics
 
 def create_growth_chart(client_data, portfolio_type, current_client):
     """Создает адаптивный график роста"""
@@ -776,6 +836,7 @@ def dashboard_page():
     current_client = st.session_state.current_user
     client_data = get_client_details(current_client)
     portfolio_dict = get_portfolio_by_client(current_client)
+    subscription_level = get_subscription_level(current_client)
     
     if not client_data or not portfolio_dict:
         st.error("❌ Ошибка загрузки данных")
@@ -784,7 +845,6 @@ def dashboard_page():
     # Определяем уровень доступа
     has_advanced_access = can_access_advanced_analytics(current_client)
     has_premium_access = can_access_premium_features(current_client)
-    subscription_level = get_subscription_level(current_client)
     subscription_details = get_subscription_details(current_client)
     
     # Бейдж подписки
@@ -893,8 +953,9 @@ def dashboard_page():
     
     # 3. Ключевые метрики с tooltip'ами
     st.subheader("🔍 Ключевые метрики")
-    portfolio_metrics = create_portfolio_metrics(client_data, portfolio_dict)
+    portfolio_metrics = create_portfolio_metrics(client_data, portfolio_dict, subscription_level)
     
+    # Базовые метрики для всех
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         display_metric_with_tooltip(
@@ -920,6 +981,83 @@ def dashboard_page():
             f"{portfolio_metrics['max_drawdown']:.1%}", 
             'max_drawdown'
         )
+    
+    # Бета-коэффициент
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        display_metric_with_tooltip(
+            "Бета-коэффициент", 
+            f"{portfolio_metrics.get('beta', 0):.2f}", 
+            'beta'
+        )
+    
+    # ПРОДВИНУТЫЕ МЕТРИКИ (для advanced и premium)
+    if subscription_level in ['advanced', 'premium']:
+        st.subheader("🎯 Продвинутые метрики")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            display_metric_with_tooltip(
+                "Коэф. Сортино", 
+                f"{portfolio_metrics.get('sortino_ratio', 0):.2f}", 
+                'sortino_ratio'
+            )
+        
+        with col2:
+            display_metric_with_tooltip(
+                "Коэф. Трейнора", 
+                f"{portfolio_metrics.get('treynor_ratio', 0):.3f}", 
+                'treynor_ratio'
+            )
+        
+        with col3:
+            display_metric_with_tooltip(
+                "М-квадрат", 
+                f"{portfolio_metrics.get('m_squared', 0):.3f}", 
+                'm_squared'
+            )
+        
+        with col4:
+            display_metric_with_tooltip(
+                "Альфа Дженсена", 
+                f"{portfolio_metrics.get('jensen_alpha', 0):.3f}", 
+                'jensen_alpha'
+            )
+    
+    # ПРЕМИУМ МЕТРИКИ (только для premium)
+    if subscription_level == 'premium':
+        st.subheader("💎 Премиум метрики")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            display_metric_with_tooltip(
+                "Коэф. Модильяни", 
+                f"{portfolio_metrics.get('modigliani_ratio', 0):.3f}", 
+                'modigliani_ratio'
+            )
+        
+        with col2:
+            display_metric_with_tooltip(
+                "Information Ratio", 
+                f"{portfolio_metrics.get('information_ratio', 0):.3f}", 
+                'information_ratio'
+            )
+        
+        with col3:
+            display_metric_with_tooltip(
+                "Tracking Error", 
+                f"{portfolio_metrics.get('tracking_error', 0):.3f}", 
+                'tracking_error'
+            )
+        
+        with col4:
+            display_metric_with_tooltip(
+                "Коэф. Калмара", 
+                f"{portfolio_metrics.get('calmar_ratio', 0):.2f}", 
+                'calmar_ratio'
+            )
     
     # 4. Рекомендации AI - РАЗНЫЕ ДЛЯ РАЗНЫХ ПОДПИСОК
     st.subheader("🤖 Рекомендации AI")
@@ -973,6 +1111,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
