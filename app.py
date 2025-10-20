@@ -1,4 +1,4 @@
-# app.py - полностью адаптивная версия С УЛУЧШЕННЫМ ОТОБРАЖЕНИЕМ ПОДПИСОК
+# app.py - полностью адаптивная версия С ОБНОВЛЕННЫМИ ТАРИФАМИ
 
 import streamlit as st
 import pandas as pd
@@ -157,12 +157,11 @@ def init_session_state():
 def display_subscription_badge(subscription_level: str) -> str:
     """Создает красивый бейдж подписки"""
     badges = {
-        'trial': '🎁 <span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">ПРОБНЫЙ</span>',
         'basic': '📊 <span style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">БАЗОВЫЙ</span>',
         'advanced': '🎯 <span style="background: linear-gradient(135deg, #fc466b, #3f5efb); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">ПРОДВИНУТЫЙ</span>',
         'premium': '💎 <span style="background: linear-gradient(135deg, #ffd700, #ff8c00); color: black; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">ПРЕМИУМ</span>'
     }
-    return badges.get(subscription_level, badges['trial'])
+    return badges.get(subscription_level, badges['basic'])
 
 def login_page():
     """Адаптивная страница входа БЕЗ ИНФОРМАЦИИ О ПОДПИСКАХ"""
@@ -292,7 +291,7 @@ def display_subscription_status(client_name: str):
     # Кнопка улучшения, если не премиум
     if subscription_level != 'premium':
         st.sidebar.markdown("---")
-        levels = ['trial', 'basic', 'advanced', 'premium']
+        levels = ['basic', 'advanced', 'premium']
         current_index = levels.index(subscription_level) if subscription_level in levels else 0
         next_level = levels[current_index + 1] if current_index < len(levels) - 1 else 'premium'
         next_sub_info = SUBSCRIPTION_FEATURES.get(next_level, {})
@@ -323,23 +322,23 @@ def show_feature_unlock_prompt(feature_name: str, required_level: str, client_na
 def display_pricing_page():
     """Страница с сравнением тарифов"""
     st.title("💎 Выберите свой тариф")
-    st.write("Начните с бесплатного пробного периода и улучшайте по мере роста ваших потребностей")
+    st.write("Начните с бесплатного базового тарифа и улучшайте по мере роста ваших потребностей")
     
     # Создаем колонки для тарифов
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     
-    for i, level in enumerate(['trial', 'basic', 'advanced', 'premium']):
+    for i, level in enumerate(['basic', 'advanced', 'premium']):
         plan = SUBSCRIPTION_FEATURES[level]
-        with [col1, col2, col3, col4][i]:
+        with [col1, col2, col3][i]:
             st.subheader(plan['name'])
             st.metric("Стоимость", f"{plan['price']}₽/мес")
             
             st.write("**Включено:**")
-            for feature in plan['features'][:4]:
+            for feature in plan['features'][:5]:
                 st.write(f"✅ {feature}")
             
-            if level == 'trial':
-                st.button("🎁 Начать пробный период", key=f"btn_{level}", use_container_width=True)
+            if level == 'basic':
+                st.button("🎁 Начать бесплатно", key=f"btn_{level}", use_container_width=True, type="primary")
             else:
                 st.button(f"💳 Выбрать {plan['name']}", key=f"btn_{level}", use_container_width=True)
 
@@ -373,7 +372,7 @@ def advanced_analytics_page():
         display_portfolio_analysis(results)
 
 def dashboard_page():
-    """Адаптивная панель управления С УЛУЧШЕННЫМ ОТОБРАЖЕНИЕМ ПОДПИСОК"""
+    """Адаптивная панель управления С ОБНОВЛЕННЫМИ ТАРИФАМИ"""
     
     current_client = st.session_state.current_user
     client_data = get_client_details(current_client)
