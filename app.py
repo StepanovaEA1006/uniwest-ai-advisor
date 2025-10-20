@@ -1,11 +1,11 @@
-# app.py - полностью адаптивная версия СО ВСЕМИ ПОКАЗАТЕЛЯМИ И TOOLTIP'АМИ
+# app.py - полностью адаптивная версия С ГРАФИКАМИ И ВИЗУАЛИЗАЦИЯМИ
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 
 # advanced_analysis.py - расширенная версия прямо в app.py
@@ -33,7 +33,9 @@ class AdvancedPortfolioAnalysis:
             'efficiency_metrics': self.calculate_efficiency_metrics(),
             'comparative_analysis': self.benchmark_comparison(),
             'ai_insights': self.generate_ai_insights() if len(self.portfolio_dict) > 3 else [],
-            'recommendations': self.generate_detailed_recommendations()
+            'recommendations': self.generate_detailed_recommendations(),
+            'historical_data': self.generate_historical_data(),
+            'performance_charts': self.generate_performance_charts()
         }
     
     def calculate_basic_metrics(self) -> Dict:
@@ -129,6 +131,87 @@ class AdvancedPortfolioAnalysis:
             'Материалы': 0.04
         }
         return sectors
+    
+    def generate_historical_data(self) -> pd.DataFrame:
+        """Генерация исторических данных за 10 лет"""
+        dates = pd.date_range(start='2014-01-01', end='2024-01-01', freq='M')
+        np.random.seed(sum(ord(c) for c in self.client_name))
+        
+        # Генерируем реалистичные доходности в зависимости от типа портфеля
+        portfolio_type_effects = {
+            'агрессивный': {'mean': 0.012, 'std': 0.06, 'crisis_effect': -0.35},
+            'сбалансированный': {'mean': 0.008, 'std': 0.035, 'crisis_effect': -0.20},
+            'доходный': {'mean': 0.006, 'std': 0.025, 'crisis_effect': -0.15},
+            'ультра-консервативный': {'mean': 0.004, 'std': 0.015, 'crisis_effect': -0.08}
+        }
+        
+        # Базовые параметры (сбалансированный портфель по умолчанию)
+        params = portfolio_type_effects.get('сбалансированный', portfolio_type_effects['сбалансированный'])
+        
+        monthly_returns = np.random.normal(params['mean'], params['std'], len(dates))
+        
+        # Добавляем реалистичные кризисы
+        crisis_periods = [
+            ('2015-07-01', '2016-02-01', -0.18),  # Кризис 2015-2016
+            ('2018-09-01', '2018-12-01', -0.12),  # Коррекция 2018
+            ('2020-02-01', '2020-04-01', -0.25),  # COVID-19
+            ('2022-01-01', '2022-10-01', -0.20)   # Геополитический кризис
+        ]
+        
+        for crisis_start, crisis_end, crisis_strength in crisis_periods:
+            mask = (dates >= pd.to_datetime(crisis_start)) & (dates <= pd.to_datetime(crisis_end))
+            monthly_returns[mask] += np.random.normal(crisis_strength, 0.02, mask.sum())
+        
+        # Расчет накопленной стоимости
+        initial_investment = 1000000  # 1 млн рублей
+        portfolio_value = [initial_investment]
+        
+        for ret in monthly_returns:
+            portfolio_value.append(portfolio_value[-1] * (1 + ret))
+        
+        df = pd.DataFrame({
+            'Date': dates,
+            'Portfolio_Value': portfolio_value[1:],
+            'Monthly_Return': monthly_returns,
+            'Cumulative_Return': (np.array(portfolio_value[1:]) / initial_investment - 1) * 100
+        })
+        
+        return df
+    
+    def generate_performance_charts(self) -> Dict:
+        """Генерация данных для графиков производительности"""
+        historical_data = self.generate_historical_data()
+        
+        # Расчет скользящих средних
+        historical_data['MA_6'] = historical_data['Portfolio_Value'].rolling(window=6).mean()
+        historical_data['MA_12'] = historical_data['Portfolio_Value'].rolling(window=12).mean()
+        
+        # Расчет просадок
+        historical_data['Peak'] = historical_data['Portfolio_Value'].expanding().max()
+        historical_data['Drawdown'] = (historical_data['Portfolio_Value'] - historical_data['Peak']) / historical_data['Peak'] * 100
+        
+        return {
+            'historical_data': historical_data,
+            'annual_returns': self.calculate_annual_returns(historical_data),
+            'volatility_data': self.calculate_rolling_volatility(historical_data)
+        }
+    
+    def calculate_annual_returns(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Расчет годовой доходности"""
+        data['Year'] = data['Date'].dt.year
+        annual_data = data.groupby('Year').agg({
+            'Portfolio_Value': ['first', 'last']
+        }).reset_index()
+        
+        annual_data.columns = ['Year', 'Start_Value', 'End_Value']
+        annual_data['Annual_Return'] = (annual_data['End_Value'] / annual_data['Start_Value'] - 1) * 100
+        
+        return annual_data
+    
+    def calculate_rolling_volatility(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Расчет скользящей волатильности"""
+        data['Rolling_Volatility_1Y'] = data['Monthly_Return'].rolling(window=12).std() * np.sqrt(12) * 100
+        return data[['Date', 'Rolling_Volatility_1Y']].dropna()
     
     def generate_ai_insights(self) -> List[str]:
         """AI инсайты для премиум пользователей"""
@@ -341,6 +424,233 @@ def display_metric_with_tooltip(label: str, value: str, metric_name: str):
     with col2:
         # Просто отображаем tooltip без лишних оберток
         st.markdown(create_tooltip(metric_name), unsafe_allow_html=True)
+
+# НОВЫЕ ФУНКЦИИ ДЛЯ ГРАФИКОВ
+def create_historical_performance_chart(historical_data: pd.DataFrame, client_name: str):
+    """Создает график исторической производительности портфеля"""
+    fig = go.Figure()
+    
+    # Основная линия портфеля
+    fig.add_trace(go.Scatter(
+        x=historical_data['Date'],
+        y=historical_data['Portfolio_Value'],
+        mode='lines',
+        name='Стоимость портфеля',
+        line=dict(color='#2E86AB', width=3),
+        hovertemplate='<b>%{x|%b %Y}</b><br>₽%{y:,.0f}<extra></extra>'
+    ))
+    
+    # Скользящие средние
+    fig.add_trace(go.Scatter(
+        x=historical_data['Date'],
+        y=historical_data['MA_6'],
+        mode='lines',
+        name='Скользящая средняя 6 мес',
+        line=dict(color='#A23B72', width=1, dash='dot'),
+        opacity=0.7
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=historical_data['Date'],
+        y=historical_data['MA_12'],
+        mode='lines',
+        name='Скользящая средняя 12 мес',
+        line=dict(color='#F18F01', width=1, dash='dash'),
+        opacity=0.7
+    ))
+    
+    # Область просадок
+    fig.add_trace(go.Scatter(
+        x=historical_data['Date'],
+        y=historical_data['Peak'],
+        fill=None,
+        mode='lines',
+        line=dict(color='rgba(255,0,0,0.1)'),
+        showlegend=False
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=historical_data['Date'],
+        y=historical_data['Portfolio_Value'],
+        fill='tonexty',
+        mode='lines',
+        line=dict(color='rgba(255,0,0,0.1)'),
+        name='Просадки',
+        fillcolor='rgba(255,0,0,0.1)'
+    ))
+    
+    fig.update_layout(
+        title=f'📈 Историческая производительность портфеля {client_name} (10 лет)',
+        xaxis_title='Дата',
+        yaxis_title='Стоимость портфеля (рубли)',
+        hovermode='x unified',
+        height=500,
+        showlegend=True,
+        template='plotly_white'
+    )
+    
+    # Форматирование осей
+    fig.update_yaxis(tickformat=",.0f")
+    fig.update_xaxis(rangeslider_visible=False)
+    
+    return fig
+
+def create_returns_volatility_chart(performance_data: Dict):
+    """Создает комбинированный график доходности и волатильности"""
+    historical_data = performance_data['historical_data']
+    volatility_data = performance_data['volatility_data']
+    
+    fig = go.Figure()
+    
+    # График месячной доходности (столбцы)
+    colors = ['red' if x < 0 else 'green' for x in historical_data['Monthly_Return'] * 100]
+    
+    fig.add_trace(go.Bar(
+        x=historical_data['Date'],
+        y=historical_data['Monthly_Return'] * 100,
+        name='Месячная доходность %',
+        marker_color=colors,
+        opacity=0.6,
+        yaxis='y1'
+    ))
+    
+    # График волатильности (линия)
+    fig.add_trace(go.Scatter(
+        x=volatility_data['Date'],
+        y=volatility_data['Rolling_Volatility_1Y'],
+        mode='lines',
+        name='Волатильность (12 мес) %',
+        line=dict(color='purple', width=2),
+        yaxis='y2'
+    ))
+    
+    fig.update_layout(
+        title='📊 Месячная доходность и волатильность портфеля',
+        xaxis_title='Дата',
+        yaxis=dict(
+            title='Доходность (%)',
+            titlefont=dict(color='green'),
+            tickfont=dict(color='green')
+        ),
+        yaxis2=dict(
+            title='Волатильность (%)',
+            titlefont=dict(color='purple'),
+            tickfont=dict(color='purple'),
+            anchor='x',
+            overlaying='y',
+            side='right'
+        ),
+        hovermode='x unified',
+        height=400,
+        showlegend=True,
+        template='plotly_white'
+    )
+    
+    return fig
+
+def create_drawdown_chart(historical_data: pd.DataFrame):
+    """Создает график просадок портфеля"""
+    fig = go.Figure()
+    
+    fig.add_trace(go.Scatter(
+        x=historical_data['Date'],
+        y=historical_data['Drawdown'],
+        fill='tozeroy',
+        mode='lines',
+        name='Просадка',
+        line=dict(color='red', width=2),
+        fillcolor='rgba(255,0,0,0.2)',
+        hovertemplate='<b>%{x|%b %Y}</b><br>Просадка: %{y:.1f}%<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        title='📉 Исторические просадки портфеля',
+        xaxis_title='Дата',
+        yaxis_title='Просадка (%)',
+        hovermode='x unified',
+        height=350,
+        showlegend=False,
+        template='plotly_white',
+        yaxis=dict(autorange='reversed')  # Инвертируем ось Y для просадок
+    )
+    
+    return fig
+
+def create_annual_returns_chart(annual_data: pd.DataFrame):
+    """Создает график годовой доходности"""
+    colors = ['red' if x < 0 else 'green' for x in annual_data['Annual_Return']]
+    
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        x=annual_data['Year'],
+        y=annual_data['Annual_Return'],
+        name='Годовая доходность',
+        marker_color=colors,
+        text=annual_data['Annual_Return'].round(1).astype(str) + '%',
+        textposition='auto',
+        hovertemplate='<b>%{x}</b><br>Доходность: %{y:.1f}%<extra></extra>'
+    ))
+    
+    # Линия среднего значения
+    mean_return = annual_data['Annual_Return'].mean()
+    fig.add_hline(y=mean_return, line_dash="dash", line_color="blue", 
+                  annotation_text=f"Среднее: {mean_return:.1f}%")
+    
+    fig.update_layout(
+        title='📅 Годовая доходность портфеля',
+        xaxis_title='Год',
+        yaxis_title='Доходность (%)',
+        height=400,
+        showlegend=False,
+        template='plotly_white'
+    )
+    
+    return fig
+
+def create_performance_summary_cards(historical_data: pd.DataFrame, annual_data: pd.DataFrame):
+    """Создает карточки с ключевыми показателями производительности"""
+    current_value = historical_data['Portfolio_Value'].iloc[-1]
+    initial_value = historical_data['Portfolio_Value'].iloc[0]
+    total_return = (current_value / initial_value - 1) * 100
+    
+    # Максимальная просадка
+    max_drawdown = historical_data['Drawdown'].min()
+    
+    # Лучший и худший год
+    best_year = annual_data.loc[annual_data['Annual_Return'].idxmax()]
+    worst_year = annual_data.loc[annual_data['Annual_Return'].idxmin()]
+    
+    # Волатильность
+    volatility = historical_data['Monthly_Return'].std() * np.sqrt(12) * 100
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            "Общая доходность (10 лет)",
+            f"{total_return:.1f}%",
+            f"₽{current_value:,.0f}"
+        )
+    
+    with col2:
+        st.metric(
+            "Максимальная просадка",
+            f"{max_drawdown:.1f}%"
+        )
+    
+    with col3:
+        st.metric(
+            "Лучший год",
+            f"{best_year['Annual_Return']:.1f}%",
+            f"{int(best_year['Year'])}"
+        )
+    
+    with col4:
+        st.metric(
+            "Средняя волатильность",
+            f"{volatility:.1f}%"
+        )
 
 def display_portfolio_analysis(results: Dict, subscription_level: str) -> None:
     """Улучшенное отображение анализа с разными уровнями доступа"""
@@ -781,30 +1091,6 @@ def create_portfolio_metrics(client_data, portfolio_dict, subscription_level: st
     
     return metrics
 
-def create_growth_chart(client_data, portfolio_type, current_client):
-    """Создает адаптивный график роста"""
-    dates = pd.date_range(start='2021-01-01', end='2024-01-01', freq='M')
-    
-    returns_map = {
-        'агрессивный': {'mean': 0.015, 'std': 0.08},
-        'сбалансированный': {'mean': 0.008, 'std': 0.04},
-        'доходный': {'mean': 0.006, 'std': 0.03},
-        'ультра-консервативный': {'mean': 0.004, 'std': 0.02}
-    }
-    
-    return_profile = returns_map.get(portfolio_type, returns_map['сбалансированный'])
-    seed = sum(ord(c) for c in current_client)
-    np.random.seed(seed)
-    
-    monthly_returns = np.random.normal(return_profile['mean'], return_profile['std'], len(dates))
-    initial = client_data['initial_investment']
-    values = [initial]
-    
-    for ret in monthly_returns:
-        values.append(values[-1] * (1 + ret))
-    
-    return dates, values[1:], initial
-
 def display_subscription_status(client_name: str):
     """Отображает статус подписки клиента"""
     subscription_level = get_subscription_level(client_name)
@@ -977,8 +1263,49 @@ def display_advanced_efficiency_metrics(results: Dict, subscription_level: str, 
             'jensen_alpha'
         )
 
+def display_historical_performance(results: Dict, client_name: str):
+    """Отображение исторической производительности портфеля"""
+    if not results.get('performance_charts'):
+        return
+    
+    st.subheader("📈 Историческая производительность (10 лет)")
+    
+    performance_data = results['performance_charts']
+    historical_data = performance_data['historical_data']
+    annual_data = performance_data['annual_returns']
+    
+    # Карточки с ключевыми показателями
+    create_performance_summary_cards(historical_data, annual_data)
+    
+    # Основной график производительности
+    st.plotly_chart(
+        create_historical_performance_chart(historical_data, client_name),
+        use_container_width=True
+    )
+    
+    # Дополнительные графики в колонках
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.plotly_chart(
+            create_returns_volatility_chart(performance_data),
+            use_container_width=True
+        )
+    
+    with col2:
+        st.plotly_chart(
+            create_drawdown_chart(historical_data),
+            use_container_width=True
+        )
+    
+    # Годовая доходность
+    st.plotly_chart(
+        create_annual_returns_chart(annual_data),
+        use_container_width=True
+    )
+
 def dashboard_page():
-    """Адаптивная панель управления С ОБНОВЛЕННЫМИ ТАРИФАМИ"""
+    """Адаптивная панель управления С ОБНОВЛЕННЫМИ ТАРИФАМИ И ГРАФИКАМИ"""
     
     current_client = st.session_state.current_user
     client_data = get_client_details(current_client)
@@ -1206,7 +1533,18 @@ def dashboard_page():
                 'calmar_ratio'
             )
     
-    # 4. Рекомендации AI - РАЗНЫЕ ДЛЯ РАЗНЫХ ПОДПИСОК
+    # 4. ИСТОРИЧЕСКАЯ ПРОИЗВОДИТЕЛЬНОСТЬ С ГРАФИКАМИ
+    st.markdown("---")
+    
+    # Запускаем анализ для получения исторических данных
+    with st.spinner("📊 Загружаем исторические данные..."):
+        analyzer = AdvancedPortfolioAnalysis(portfolio_dict, current_client)
+        results = analyzer.comprehensive_analysis()
+    
+    if results and results.get('performance_charts'):
+        display_historical_performance(results, current_client)
+    
+    # 5. Рекомендации AI - РАЗНЫЕ ДЛЯ РАЗНЫХ ПОДПИСОК
     st.subheader("🤖 Рекомендации AI")
     
     recommendations = generate_subscription_based_recommendations(current_client)
@@ -1259,869 +1597,8 @@ def main():
 if __name__ == "__main__":
     main()
 
+# database.py остается без изменений (используем предыдущую версию)
 
-# database.py - файл для работы с базой данных портфелей
-
-import sqlite3
-import logging
-from typing import Dict, List, Optional, Tuple
-from datetime import datetime
-import os
-
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# ДАННЫЕ О ПОДПИСКАХ КЛИЕНТОВ - ОБНОВЛЕННЫЕ ДАННЫЕ С НОВЫМИ ТАРИФАМИ!
-CLIENT_SUBSCRIPTIONS = {
-    'Иван Петров': {'level': 'premium', 'price': 800, 'expires': '2024-12-31'},
-    'Мария Сидорова': {'level': 'advanced', 'price': 450, 'expires': '2024-11-30'},
-    'Алексей Козлов': {'level': 'basic', 'price': 0, 'expires': '2024-10-15'},
-    'Елена Волкова': {'level': 'basic', 'price': 0, 'expires': '2024-09-30'},
-    'Дмитрий Смирнов': {'level': 'basic', 'price': 0, 'expires': '2024-09-30'}
-}
-
-# ОПИСАНИЯ ТАРИФОВ И ФУНКЦИЙ - УСИЛЕННЫЕ ВОЗМОЖНОСТИ С НОВЫМИ ПОКАЗАТЕЛЯМИ
-SUBSCRIPTION_FEATURES = {
-    'basic': {
-        'name': 'Базовый',
-        'price': 0,
-        'features': [
-            '📊 Все базовые метрики портфеля',
-            '💡 Персональные рекомендации',
-            '📈 Анализ диверсификации',
-            '🔄 Мониторинг портфеля',
-            '📱 Доступ с любых устройств',
-            '📊 Визуализация активов',
-            '🎯 Базовые инвестиционные идеи',
-            '📋 Планирование целей',
-            '📊 Коэффициент Шарпа и Бета',
-            '📈 Объяснения показателей'
-        ],
-        'limitations': [
-            '❌ Без продвинутого риск-менеджмента',
-            '❌ Без оптимизации по Марковицу',
-            '❌ Без новостного анализа',
-            '❌ Без AI-прогнозов'
-        ]
-    },
-    'advanced': {
-        'name': 'Продвинутый',
-        'price': 450,
-        'features': [
-            '✅ Все функции Базового тарифа',
-            '🎯 Расширенная оптимизация портфеля',
-            '📉 Глубокий анализ рисков (VaR, CVaR)',
-            '📊 Stress-testing сценарии',
-            '⚡ Тактические рекомендации',
-            '📈 Метрики эффективности (Сортино, Калмар)',
-            '🔄 Автоматическая ребалансировка',
-            '📊 Матрица корреляций',
-            '🎯 Анализ качества портфеля',
-            '📈 Сравнение с бенчмарками',
-            '📊 Коэффициенты Трейнора и М-квадрат',
-            'α Альфа Дженсена и расширенная аналитика'
-        ],
-        'upgrade_reason': 'Для профессионального управления рисками'
-    },
-    'premium': {
-        'name': 'Премиум',
-        'price': 800,
-        'features': [
-            '✅ Все функции Продвинутого тарифа',
-            '🤖 AI-прогнозы на основе ML',
-            '🏆 Детальное сравнение с эталонами',
-            '🚀 Приоритетная поддержка 24/7',
-            '📈 Расширенная аналитика',
-            '💎 Персональный финансовый советник',
-            '🎯 Эксклюзивные инвестиционные идеи',
-            '📊 Кастомные отчеты и дашборды',
-            '🌍 Отраслевой анализ',
-            '⚡ Монте-Карло симуляции',
-            '📊 AI инсайты и паттерны',
-            '🎯 Персональные стратегии',
-            '💎 Коэффициенты Модильяни и Information Ratio',
-            '📏 Tracking Error и премиум аналитика'
-        ],
-        'upgrade_reason': 'Для максимальных результатов с AI-помощником'
-    }
-}
-
-# ФУНКЦИИ ДЛЯ РАБОТЫ С ПОДПИСКАМИ
-def get_subscription_level(client_name: str) -> str:
-    """Возвращает уровень подписки клиента"""
-    subscription = CLIENT_SUBSCRIPTIONS.get(client_name, {})
-    return subscription.get('level', 'basic')
-
-def get_subscription_details(client_name: str) -> Dict:
-    """Возвращает детали подписки"""
-    subscription = CLIENT_SUBSCRIPTIONS.get(client_name, {})
-    level = subscription.get('level', 'basic')
-    
-    details = SUBSCRIPTION_FEATURES.get(level, {}).copy()
-    details.update({
-        'level': level,
-        'price': subscription.get('price', 0),
-        'expires': subscription.get('expires', '2024-01-01')
-    })
-    
-    return details
-
-def can_access_advanced_analytics(client_name: str) -> bool:
-    """Проверяет доступ к продвинутой аналитике"""
-    level = get_subscription_level(client_name)
-    return level in ['advanced', 'premium']
-
-def can_access_premium_features(client_name: str) -> bool:
-    """Проверяет доступ к премиум функциям"""
-    return get_subscription_level(client_name) == 'premium'
-
-def can_access_news_analysis(client_name: str) -> bool:
-    """Проверяет доступ к новостному анализу"""
-    level = get_subscription_level(client_name)
-    return level in ['advanced', 'premium']
-
-# РАСШИРЕННЫЕ ДАННЫЕ ДЛЯ ПРЕМИУМ-АНАЛИТИКИ
-PREMIUM_ANALYTICS_DATA = {
-    'Иван Петров': {
-        'ai_predictions': {
-            'next_month_return': 0.045,
-            'confidence': 0.78,
-            'trend': 'bullish',
-            'key_drivers': ['технологический сектор', 'снижение инфляции'],
-            'risk_warnings': ['геополитическая напряженность', 'волатильность рынка'],
-            'optimal_rebalance': {'TSLA': -0.02, 'NVDA': -0.01, 'BND': 0.03}
-        },
-        'benchmark_comparison': {
-            'sp500': {'return': 0.121, 'volatility': 0.15, 'sharpe': 0.81},
-            'nasdaq': {'return': 0.183, 'volatility': 0.22, 'sharpe': 0.83},
-            'russian_index': {'return': 0.085, 'volatility': 0.18, 'sharpe': 0.47},
-            'your_portfolio': {'return': 0.150, 'volatility': 0.20, 'sharpe': 0.75},
-            'percentile_ranking': 0.72
-        },
-        'ml_insights': [
-            '📈 **Высокая корреляция с технологическим сектором** (0.85)',
-            '⚡ **Портфель перевешен в акции роста** - рассмотрите балансировку',
-            '🛡️ **Рекомендуется добавить защитные активы** для снижения VaR',
-            '🎯 **Оптимальный момент для ребалансировки** - потенциал +2.3%',
-            '📊 **Stress-test показал устойчивость** к умеренным коррекциям'
-        ],
-        'sector_analysis': {
-            'Технологии': 0.35,
-            'Финансы': 0.20, 
-            'Здравоохранение': 0.15,
-            'Потребительские товары': 0.12,
-            'Энергетика': 0.08,
-            'Недвижимость': 0.06,
-            'Материалы': 0.04
-        }
-    },
-    'Мария Сидорова': {
-        'ai_predictions': {
-            'next_month_return': 0.028,
-            'confidence': 0.72,
-            'trend': 'neutral',
-            'key_drivers': ['потребительский сектор', 'динамика рубля'],
-            'risk_warnings': ['инфляционное давление', 'изменение ставок ЦБ'],
-            'optimal_rebalance': {'VTI': 0.02, 'BND': -0.02, 'GLD': 0.01}
-        },
-        'benchmark_comparison': {
-            'sp500': {'return': 0.121, 'volatility': 0.15, 'sharpe': 0.81},
-            'nasdaq': {'return': 0.183, 'volatility': 0.22, 'sharpe': 0.83},
-            'russian_index': {'return': 0.085, 'volatility': 0.18, 'sharpe': 0.47},
-            'your_portfolio': {'return': 0.100, 'volatility': 0.16, 'sharpe': 0.63},
-            'percentile_ranking': 0.58
-        },
-        'ml_insights': [
-            '💰 **Хорошая диверсификация по секторам**',
-            '📊 **Умеренный уровень риска** соответствует профилю',
-            '🔄 **Рекомендуется реинвестировать дивиденды**',
-            '⏰ **Идеальный горизонт инвестиций 3-5 лет**',
-            '🎯 **Портфель оптимален для поставленных целей**'
-        ],
-        'sector_analysis': {
-            'Технологии': 0.25,
-            'Финансы': 0.18,
-            'Здравоохранение': 0.15,
-            'Потребительские товары': 0.20,
-            'Энергетика': 0.12,
-            'Недвижимость': 0.08,
-            'Материалы': 0.02
-        }
-    }
-}
-
-# ФУНКЦИИ ДЛЯ ПРЕМИУМ-АНАЛИТИКИ
-def get_ai_predictions(client_name: str) -> Optional[Dict]:
-    """Возвращает AI-прогнозы для премиум клиентов"""
-    if not can_access_premium_features(client_name):
-        return None
-    return PREMIUM_ANALYTICS_DATA.get(client_name, {}).get('ai_predictions')
-
-def get_benchmark_comparison(client_name: str) -> Optional[Dict]:
-    """Возвращает сравнение с эталонными индексами"""
-    if not can_access_premium_features(client_name):
-        return None
-    return PREMIUM_ANALYTICS_DATA.get(client_name, {}).get('benchmark_comparison')
-
-def get_ml_insights(client_name: str) -> List[str]:
-    """Возвращает ML инсайты для портфеля"""
-    if not can_access_premium_features(client_name):
-        return []
-    return PREMIUM_ANALYTICS_DATA.get(client_name, {}).get('ml_insights', [])
-
-def get_sector_analysis(client_name: str) -> Optional[Dict]:
-    """Возвращает отраслевой анализ"""
-    if not can_access_premium_features(client_name):
-        return None
-    return PREMIUM_ANALYTICS_DATA.get(client_name, {}).get('sector_analysis')
-
-# Детальные данные клиентов с уникальными характеристиками
-CLIENTS_DETAILED_DATA = {
-    'Иван Петров': {
-        'name': 'Иван Петров',
-        'portfolio_name': 'агрессивный',
-        'description': 'Молодой инвестор, ориентированный на максимальный рост капитала',
-        'risk_profile': 'очень высокий',
-        'investment_horizon': '15+ лет',
-        'experience': 'Эксперт',
-        'financial_goals': 'Создание технологического фонда, венчурные инвестиции',
-        'portfolio_type': 'агрессивный',
-        'risk_tolerance': 0.85,
-        'diversification_level': 'низкий',
-        'initial_investment': 500000,
-        'target_amount': 5000000,
-        'key_metrics': {
-            'expected_return': 0.18,
-            'volatility': 0.32,
-            'sharpe_ratio': 0.56
-        }
-    },
-    'Мария Сидорова': {
-        'name': 'Мария Сидорова',
-        'portfolio_name': 'агрессивный',
-        'description': 'Молодая инвестор, готовая к риску для ускоренного роста',
-        'risk_profile': 'высокий',
-        'investment_horizon': '5-7 лет',
-        'experience': 'Начинающий',
-        'financial_goals': 'Ускоренное накопление на жилье',
-        'portfolio_type': 'агрессивный',
-        'risk_tolerance': 0.70,
-        'diversification_level': 'средний',
-        'initial_investment': 300000,
-        'target_amount': 800000,
-        'key_metrics': {
-            'expected_return': 0.15,
-            'volatility': 0.25,
-            'sharpe_ratio': 0.60
-        }
-    },
-    'Алексей Козлов': {
-        'name': 'Алексей Козлов',
-        'portfolio_name': 'сбалансированный',
-        'description': 'Семейный инвестор с умеренными аппетитами к риску',
-        'risk_profile': 'умеренный',
-        'investment_horizon': '7-10 лет',
-        'experience': 'Продвинутый',
-        'financial_goals': 'Образование детей, покупка загородного дома',
-        'portfolio_type': 'сбалансированный',
-        'risk_tolerance': 0.55,
-        'diversification_level': 'очень высокий',
-        'initial_investment': 800000,
-        'target_amount': 2500000,
-        'key_metrics': {
-            'expected_return': 0.095,
-            'volatility': 0.14,
-            'sharpe_ratio': 0.68
-        }
-    },
-    'Елена Волкова': {
-        'name': 'Елена Волкова',
-        'portfolio_name': 'доходный',
-        'description': 'Опытный инвестор, ориентированный на пассивный доход',
-        'risk_profile': 'средний',
-        'investment_horizon': '10+ лет',
-        'experience': 'Опытный',
-        'financial_goals': 'Пассивный доход для досрочного выхода на пенсию',
-        'portfolio_type': 'доходный',
-        'risk_tolerance': 0.45,
-        'diversification_level': 'высокий',
-        'initial_investment': 1200000,
-        'target_amount': 4000000,
-        'key_metrics': {
-            'expected_return': 0.078,
-            'volatility': 0.11,
-            'sharpe_ratio': 0.71
-        }
-    },
-    'Дмитрий Смирнов': {
-        'name': 'Дмитрий Смирнов',
-        'portfolio_name': 'ультра-консервативный',
-        'description': 'Пенсионер, основной приоритет - сохранение капитала',
-        'risk_profile': 'очень низкий',
-        'investment_horizon': '1-3 года',
-        'experience': 'Консервативный',
-        'financial_goals': 'Сохранить сбережения от инфляции',
-        'portfolio_type': 'ультра-консервативный',
-        'risk_tolerance': 0.15,
-        'diversification_level': 'средний',
-        'initial_investment': 2000000,
-        'target_amount': 2200000,
-        'key_metrics': {
-            'expected_return': 0.045,
-            'volatility': 0.05,
-            'sharpe_ratio': 0.90
-        }
-    }
-}
-
-class PortfolioDatabase:
-    """
-    Класс для работы с базой данных портфелей
-    """
-    
-    def __init__(self, db_path: str = 'uniwest.db'):
-        self.db_path = db_path
-        self._init_database()
-    
-    def _get_connection(self) -> sqlite3.Connection:
-        """Возвращает соединение с базой данных"""
-        try:
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row
-            return conn
-        except sqlite3.Error as e:
-            logger.error(f"Ошибка подключения к базе данных: {e}")
-            raise
-    
-    def _init_database(self) -> None:
-        """
-        Инициализирует базу данных и заполняет демо-данными
-        """
-        conn = None
-        try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
-            
-            # Создаем таблицу для портфелей
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS portfolios (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT UNIQUE NOT NULL,
-                    description TEXT,
-                    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Создаем таблицу для активов в портфелях
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS portfolio_assets (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    portfolio_id INTEGER NOT NULL,
-                    ticker TEXT NOT NULL,
-                    weight REAL NOT NULL CHECK (weight >= 0 AND weight <= 1),
-                    FOREIGN KEY (portfolio_id) REFERENCES portfolios (id) ON DELETE CASCADE,
-                    UNIQUE(portfolio_id, ticker)
-                )
-            ''')
-            
-            conn.commit()
-            logger.info("База данных инициализирована")
-            
-            # Заполняем демо-данными
-            self._seed_demo_data(conn)
-            
-        except sqlite3.Error as e:
-            logger.error(f"Ошибка инициализации базы данных: {e}")
-            raise
-        finally:
-            if conn:
-                conn.close()
-    
-    def _seed_demo_data(self, conn: sqlite3.Connection) -> None:
-        """
-        Заполняет базу данных демо-данными
-        """
-        try:
-            cursor = conn.cursor()
-            
-            # Демо-портфели (соответствуют клиентам из app.py)
-            demo_portfolios = [
-                ("агрессивный", "Портфель Ивана Петрова - высокорисковые активы"),
-                ("сбалансированный", "Портфель Алексея Козлова - баланс роста и стабильности"),
-                ("доходный", "Портфель Елены Волкова - дивидендные акции"),
-                ("ультра-консервативный", "Портфель Дмитрия Смирнова - максимальная защита")
-            ]
-            
-            for portfolio_name, description in demo_portfolios:
-                cursor.execute('''
-                    INSERT OR IGNORE INTO portfolios (name, description) 
-                    VALUES (?, ?)
-                ''', (portfolio_name, description))
-            
-            # Активы для портфелей (уникальные для каждого клиента)
-            portfolios_assets = {
-                "агрессивный": {
-                    'TSLA': 0.25, 'NVDA': 0.20, 'AMD': 0.15, 'ARKK': 0.15,
-                    'SQ': 0.10, 'BTC-USD': 0.10, 'ETH-USD': 0.05
-                },
-                "сбалансированный": {
-                    'VTI': 0.25, 'VXUS': 0.15, 'BND': 0.20, 'VNQ': 0.10,
-                    'GLD': 0.08, 'AAPL': 0.07, 'MSFT': 0.07, 'JPM': 0.05, 'Cash': 0.03
-                },
-                "доходный": {
-                    'VYM': 0.20, 'SCHD': 0.18, 'T': 0.10, 'VZ': 0.09,
-                    'XOM': 0.08, 'PFE': 0.08, 'JNJ': 0.07, 'PG': 0.07, 'O': 0.06, 'Cash': 0.07
-                },
-                "ультра-консервативный": {
-                    'BND': 0.40, 'GOVT': 0.25, 'SHY': 0.15, 'JNJ': 0.08,
-                    'PG': 0.07, 'Cash': 0.05
-                }
-            }
-            
-            # Добавляем активы для каждого портфеля
-            for portfolio_name, assets in portfolios_assets.items():
-                cursor.execute('SELECT id FROM portfolios WHERE name = ?', (portfolio_name,))
-                result = cursor.fetchone()
-                
-                if result:
-                    portfolio_id = result[0]
-                    
-                    # Удаляем старые активы
-                    cursor.execute('DELETE FROM portfolio_assets WHERE portfolio_id = ?', (portfolio_id,))
-                    
-                    # Добавляем новые активы
-                    for ticker, weight in assets.items():
-                        cursor.execute('''
-                            INSERT INTO portfolio_assets (portfolio_id, ticker, weight) 
-                            VALUES (?, ?, ?)
-                        ''', (portfolio_id, ticker, weight))
-            
-            conn.commit()
-            logger.info("Демо-данные успешно добавлены")
-            
-        except sqlite3.Error as e:
-            logger.error(f"Ошибка заполнения демо-данными: {e}")
-            conn.rollback()
-            raise
-    
-    def get_portfolio(self, portfolio_name: str) -> Optional[Dict[str, float]]:
-        """
-        Получает портфель из базы данных по имени
-        """
-        conn = None
-        try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT pa.ticker, pa.weight 
-                FROM portfolio_assets pa 
-                JOIN portfolios p ON pa.portfolio_id = p.id 
-                WHERE p.name = ?
-                ORDER BY pa.weight DESC
-            ''', (portfolio_name,))
-            
-            assets = {}
-            total_weight = 0.0
-            
-            for row in cursor.fetchall():
-                ticker = row['ticker']
-                weight = row['weight']
-                assets[ticker] = weight
-                total_weight += weight
-            
-            # Нормализуем веса если сумма не равна 1.0
-            if assets and abs(total_weight - 1.0) > 0.001:
-                assets = {ticker: weight/total_weight for ticker, weight in assets.items()}
-                logger.warning(f"Веса портфеля '{portfolio_name}' нормализованы")
-            
-            return assets if assets else None
-            
-        except sqlite3.Error as e:
-            logger.error(f"Ошибка получения портфеля '{portfolio_name}': {e}")
-            return None
-        finally:
-            if conn:
-                conn.close()
-
-    def get_all_portfolios(self) -> List[Tuple[str, str]]:
-        """
-        Возвращает список всех портфелей
-        """
-        conn = None
-        try:
-            conn = self._get_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute('SELECT name, description FROM portfolios ORDER BY name')
-            return [(row['name'], row['description']) for row in cursor.fetchall()]
-            
-        except sqlite3.Error as e:
-            logger.error(f"Ошибка получения списка портфелей: {e}")
-            return []
-        finally:
-            if conn:
-                conn.close()
-
-# Функции для обратной совместимости
-def init_database():
-    """Инициализирует базу данных (для обратной совместимости)"""
-    PortfolioDatabase()
-
-def get_portfolio(portfolio_name: str) -> Optional[Dict[str, float]]:
-    """Получает портфель (для обратной совместимости)"""
-    db = PortfolioDatabase()
-    return db.get_portfolio(portfolio_name)
-
-def get_all_portfolios() -> List[Tuple[str, str]]:
-    """Получает все портфели (для обратной совместимости)"""
-    db = PortfolioDatabase()
-    return db.get_all_portfolios()
-
-# Новые функции для работы с клиентами
-def get_client_details(client_name: str) -> Optional[Dict]:
-    """Возвращает детальную информацию о клиенте"""
-    client_data = CLIENTS_DETAILED_DATA.get(client_name)
-    if client_data:
-        # Добавляем имя клиента в данные для совместимости с app.py
-        client_data_with_name = client_data.copy()
-        client_data_with_name['name'] = client_name
-        return client_data_with_name
-    return None
-
-def get_all_clients() -> List[str]:
-    """Возвращает список всех клиентов"""
-    return list(CLIENTS_DETAILED_DATA.keys())
-
-def get_portfolio_by_client(client_name: str) -> Optional[Dict[str, float]]:
-    """Получает портфель по имени клиента"""
-    client_data = CLIENTS_DETAILED_DATA.get(client_name)
-    if not client_data:
-        return None
-    
-    portfolio_name = client_data['portfolio_name']
-    return get_portfolio(portfolio_name)
-
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ РЕКОМЕНДАЦИЙ
-def analyze_diversification(portfolio: Dict[str, float], client_data: Dict) -> List[str]:
-    """Анализ диверсификации портфеля"""
-    recommendations = []
-    num_assets = len(portfolio)
-    max_weight = max(portfolio.values()) if portfolio else 0
-    
-    # Анализ количества активов
-    if num_assets < 5:
-        recommendations.append("🔄 **Увеличьте диверсификацию**: Добавьте еще 2-3 актива для снижения риска")
-    elif num_assets > 12:
-        recommendations.append("⚖️ **Оптимизируйте портфель**: Слишком много активов может усложнить управление")
-    
-    # Анализ концентрации
-    if max_weight > 0.25:
-        top_asset = max(portfolio, key=portfolio.get)
-        recommendations.append(f"📉 **Снизьте концентрацию**: Актив {top_asset} составляет {max_weight:.1%} - рассмотрите уменьшение доли")
-    
-    # Анализ корреляции
-    if has_high_correlation_assets(portfolio):
-        recommendations.append("🌍 **Добавьте некоррелированные активы**: Рассмотрите золото (GLD) или международные ETF (VXUS) для диверсификации")
-    
-    return recommendations
-
-def analyze_risk_profile(portfolio: Dict[str, float], client_data: Dict) -> List[str]:
-    """Анализ соответствия портфеля профилю риска"""
-    recommendations = []
-    risk_tolerance = client_data.get('risk_tolerance', 0.5)
-    portfolio_risk = calculate_portfolio_risk(portfolio)
-    
-    # Сравнение риска портфеля с толерантностью клиента
-    if portfolio_risk > risk_tolerance + 0.2:
-        recommendations.append("🛡️ **Снизьте риск портфеля**: Текущий уровень риска превышает вашу толерантность")
-    elif portfolio_risk < risk_tolerance - 0.2:
-        recommendations.append("🚀 **Увеличьте потенциал роста**: Можно добавить больше акций роста для повышения доходности")
-    
-    # Анализ защитных активов
-    defensive_assets_weight = sum(weight for asset, weight in portfolio.items() 
-                                if asset in ['BND', 'GOVT', 'SHY', 'Cash', 'GLD', 'JNJ', 'PG'])
-    
-    if client_data['risk_profile'] in ['низкий', 'очень низкий'] and defensive_assets_weight < 0.4:
-        recommendations.append("🏦 **Увеличьте долю защитных активов**: Добавьте облигации (BND) для стабильности портфеля")
-    
-    return recommendations
-
-def analyze_asset_allocation(portfolio: Dict[str, float], client_data: Dict) -> List[str]:
-    """Анализ распределения активов"""
-    recommendations = []
-    
-    # Классификация активов
-    stocks_weight = sum(weight for asset, weight in portfolio.items() 
-                       if not is_defensive_asset(asset))
-    bonds_weight = sum(weight for asset, weight in portfolio.items() 
-                      if asset in ['BND', 'GOVT', 'SHY'])
-    cash_weight = portfolio.get('Cash', 0)
-    crypto_weight = sum(weight for asset, weight in portfolio.items() 
-                       if 'BTC' in asset or 'ETH' in asset)
-    
-    # Анализ по типу портфеля
-    portfolio_type = client_data['portfolio_type']
-    
-    if portfolio_type == 'агрессивный' and stocks_weight < 0.7:
-        recommendations.append("📈 **Увеличьте долю акций**: Для агрессивной стратегии целесообразно 70-80% в акциях")
-    
-    elif portfolio_type == 'сбалансированный' and not (0.4 <= stocks_weight <= 0.6):
-        recommendations.append("⚖️ **Балансируйте портфель**: Оптимальное соотношение 50/50 или 60/40 между акциями и облигациями")
-    
-    elif portfolio_type == 'доходный' and bonds_weight < 0.3:
-        recommendations.append("🏛️ **Увеличьте долю облигаций**: Для доходного портфеля рекомендуется 30-40% в облигациях")
-    
-    elif portfolio_type == 'ультра-консервативный' and bonds_weight < 0.5:
-        recommendations.append("🛡️ **Увеличьте долю защитных активов**: Для консервативного портфеля рекомендуется 50-70% в облигациях")
-    
-    # Анализ денежной позиции
-    if cash_weight < 0.03:
-        recommendations.append("💵 **Создайте денежный резерв**: Рекомендуется держать 3-5% наличности для возможностей")
-    elif cash_weight > 0.1:
-        recommendations.append("💰 **Используйте избыточную наличность**: Рассмотрите инвестирование части cash в доходные активы")
-    
-    # Анализ крипто-экспозиции
-    if crypto_weight > 0.1 and client_data['risk_profile'] in ['низкий', 'очень низкий']:
-        recommendations.append("⚡ **Снизьте долю криптоактивов**: Для вашего профиля риска рекомендуется не более 5% в крипто")
-    
-    return recommendations
-
-def generate_tactical_recommendations(client_data: Dict) -> List[str]:
-    """Тактические рекомендации на основе текущей рыночной ситуации"""
-    recommendations = []
-    portfolio_type = client_data['portfolio_type']
-    
-    # Рекомендации для разных типов портфелей
-    if portfolio_type == 'агрессивный':
-        recommendations.extend([
-            "🎯 **Фокус на рост**: Рассмотрите добавление технологических ETF (QQQ, ARKK)",
-            "⏰ **Ребалансировка раз в квартал**: Активно управляйте портфелем для максимизации доходности",
-            "📊 **Мониторинг волатильности**: Установите стоп-лосс уровни для защиты от сильных просадок"
-        ])
-    
-    elif portfolio_type == 'сбалансированный':
-        recommendations.extend([
-            "🔄 **Ребалансировка раз в 6 месяцев**: Поддерживайте целевое распределение активов",
-            "🌍 **Глобальная диверсификация**: Добавьте международные ETF (VXUS, EFA)",
-            "📈 **Дивидендная стратегия**: Рассмотрите дивидендные аристократы для стабильного дохода"
-        ])
-    
-    elif portfolio_type == 'доходный':
-        recommendations.extend([
-            "💵 **Реинвестирование дивидендов**: Используйте DRIP для сложного процента",
-            "🏢 **REIT и инфраструктура**: Добавьте риел-эстейт инвестиции для диверсификации дохода",
-            "📅 **Ежеквартальный доход**: Оптимизируйте для стабильных дивидендных выплат"
-        ])
-    
-    else:  # консервативный
-        recommendations.extend([
-            "🛡️ **Защита капитала**: Фокус на высококачественные корпоративные и государственные облигации",
-            "📉 **Минимизация волатильности**: Избегайте высокорисковых активов",
-            "🏦 **Ликвидность**: Держите повышенную долю cash для возможности покупки на просадках"
-        ])
-    
-    return recommendations
-
-def generate_general_recommendations(client_data: Dict) -> List[str]:
-    """Общие рекомендации для всех клиентов"""
-    horizon = client_data['investment_horizon']
-    experience = client_data['experience']
-    
-    recommendations = [
-        "📚 **Непрерывное обучение**: Изучайте финансовые рынки и инвестиционные стратегии",
-        "📊 **Регулярный мониторинг**: Проводите ежемесячный анализ портфеля",
-        "🎯 **Дисциплина**: Придерживайтесь своей инвестиционной стратегии несмотря на рыночные колебания"
-    ]
-    
-    # Персонализация по горизонту инвестирования
-    if '15+' in horizon or '10+' in horizon:
-        recommendations.append("🚀 **Долгосрочная перспектива**: Используйте преимущество времени для сложного процента")
-    elif '1-3' in horizon or '3-5' in horizon:
-        recommendations.append("⏳ **Краткосрочная осторожность**: Фокус на сохранение капитала и ликвидность")
-    
-    # Персонализация по опыту
-    if experience in ['начальный', 'Начинающий']:
-        recommendations.append("👨‍🏫 **Консультация специалиста**: Рассмотрите работу с финансовым советником для начала")
-    elif experience in ['эксперт', 'Эксперт']:
-        recommendations.append("💡 **Продвинутые стратегии**: Исследуйте опционные стратегии для хеджирования и дохода")
-    
-    return recommendations
-
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-def has_high_correlation_assets(portfolio: Dict[str, float]) -> bool:
-    """Проверяет наличие высококоррелированных активов"""
-    tech_assets = ['TSLA', 'NVDA', 'AMD', 'AAPL', 'MSFT', 'SQ']
-    tech_weight = sum(weight for asset, weight in portfolio.items() if asset in tech_assets)
-    return tech_weight > 0.4
-
-def is_defensive_asset(asset: str) -> bool:
-    """Определяет, является ли актив защитным"""
-    defensive_assets = ['BND', 'GOVT', 'SHY', 'Cash', 'GLD', 'JNJ', 'PG', 'XOM', 'T', 'VZ']
-    return asset in defensive_assets
-
-def calculate_portfolio_risk(portfolio: Dict[str, float]) -> float:
-    """Упрощенный расчет риска портфеля"""
-    # Веса рисков для разных типов активов
-    risk_weights = {
-        'high_risk': ['TSLA', 'NVDA', 'AMD', 'SQ', 'ARKK', 'BTC-USD', 'ETH-USD'],
-        'medium_risk': ['AAPL', 'MSFT', 'VTI', 'VXUS', 'VNQ', 'VYM', 'SCHD'],
-        'low_risk': ['BND', 'GOVT', 'SHY', 'JNJ', 'PG', 'XOM', 'T', 'VZ', 'Cash', 'GLD']
-    }
-    
-    total_risk = 0
-    for asset, weight in portfolio.items():
-        if asset in risk_weights['high_risk']:
-            total_risk += weight * 0.8
-        elif asset in risk_weights['medium_risk']:
-            total_risk += weight * 0.5
-        else:
-            total_risk += weight * 0.2
-    
-    return min(total_risk, 1.0)
-
-# ОБНОВЛЕННАЯ ФУНКЦИЯ РЕКОМЕНДАЦИЙ
-def generate_client_recommendations(client_name: str) -> List[str]:
-    """Генерирует реалистичные и точные рекомендации для клиента"""
-    client_data = CLIENTS_DETAILED_DATA.get(client_name)
-    if not client_data:
-        return ["💡 Информация о клиенте не найдена"]
-    
-    portfolio = get_portfolio_by_client(client_name)
-    if not portfolio:
-        return ["💡 Портфель клиента не найден"]
-    
-    recommendations = []
-    
-    # Персонализированное приветствие
-    recommendations.append(f"👤 **Персональные рекомендации для {client_name}**")
-    
-    # Анализ диверсификации
-    diversification_recs = analyze_diversification(portfolio, client_data)
-    recommendations.extend(diversification_recs)
-    
-    # Анализ риска
-    risk_recs = analyze_risk_profile(portfolio, client_data)
-    recommendations.extend(risk_recs)
-    
-    # Анализ распределения активов
-    allocation_recs = analyze_asset_allocation(portfolio, client_data)
-    recommendations.extend(allocation_recs)
-    
-    # Тактические рекомендации
-    tactical_recs = generate_tactical_recommendations(client_data)
-    recommendations.extend(tactical_recs[:2])  # Берем 2 самые важные
-    
-    # Общие рекомендации
-    general_recs = generate_general_recommendations(client_data)
-    recommendations.extend(general_recs[:2])  # Берем 2 самые важные
-    
-    return recommendations[:8]  # Ограничиваем 8 рекомендациями
-
-# ФУНКЦИЯ ДЛЯ РЕКОМЕНДАЦИЙ С УЧЕТОМ ПОДПИСКИ - ОБНОВЛЕННАЯ ДЛЯ 3 УРОВНЕЙ
-def generate_subscription_based_recommendations(client_name: str) -> List[str]:
-    """Генерирует рекомендации в зависимости от уровня подписки"""
-    level = get_subscription_level(client_name)
-    base_recommendations = generate_client_recommendations(client_name)
-    
-    # Добавляем явные сообщения о подписке
-    subscription_messages = {
-        'basic': [
-            "🎁 **Бесплатный тариф**: Доступны базовые функции анализа",
-            "🚀 **Улучшите до Продвинутого**: Получите оптимизацию портфеля и анализ рисков за 450 руб/мес"
-        ],
-        'advanced': [
-            "🎯 **Продвинутый тариф**: Доступны расширенная аналитика и оптимизация",
-            "💎 **Улучшите до Премиум**: Получите AI-прогнозы и персонального советника за 800 руб/мес"
-        ],
-        'premium': [
-            "💎 **Премиум тариф**: Полный доступ ко всем функциям",
-            "🤖 **AI-советник**: Ваш персональный финансовый эксперт всегда на связи"
-        ]
-    }
-    
-    if level == 'basic':
-        return base_recommendations[:4] + subscription_messages['basic']
-    
-    elif level == 'advanced':
-        # Добавляем тактические рекомендации
-        advanced_recs = [
-            "🎯 **Тактическая рекомендация**: Рассмотрите увеличение доли технологических акций на 3-5%",
-            "📊 **Анализ рисков**: Текущий VaR на приемлемом уровне (-2.3%)",
-            "🔄 **Оптимизация**: Рекомендуемая ребалансировка - 2.3% в облигации"
-        ]
-        return base_recommendations + advanced_recs[:2] + subscription_messages['advanced']
-    
-    else:  # premium
-        # Добавляем премиум рекомендации
-        premium_recs = [
-            "🤖 **AI-прогноз**: Ожидается рост на 4.5% в следующем месяце с уверенностью 78%",
-            "🏆 **Сравнение с эталоном**: Ваш портфель превосходит S&P 500 на 3.1%",
-            "💎 **Премиум-совет**: Рекомендуем хеджирование опционами для защиты прибыли",
-            "🚀 **Эксклюзивная идея**: Рассмотрите добавление AI-ETF для диверсификации"
-        ]
-        ai_insights = get_ml_insights(client_name)
-        return base_recommendations + premium_recs[:3] + ai_insights[:2] + subscription_messages['premium']
-
-# Функция для получения всех данных клиента (удобно для Streamlit)
-def get_complete_client_data(client_name: str) -> Optional[Dict]:
-    """Возвращает полные данные клиента включая портфель"""
-    client_data = get_client_details(client_name)
-    if not client_data:
-        return None
-    
-    portfolio = get_portfolio_by_client(client_name)
-    recommendations = generate_subscription_based_recommendations(client_name)
-    
-    return {
-        'client_info': client_data,
-        'portfolio': portfolio,
-        'recommendations': recommendations,
-        'subscription': get_subscription_details(client_name)
-    }
-
-# ТЕСТИРОВАНИЕ ПОДПИСОК
-def test_subscriptions():
-    """Быстрая проверка подписок"""
-    print("=== ТЕСТ ПОДПИСОК ===")
-    clients = get_all_clients()
-    for client in clients:
-        level = get_subscription_level(client)
-        details = get_subscription_details(client)
-        print(f"{client}: {level} - {details['name']} ({details['price']} руб)")
-        
-        # Проверяем доступ
-        advanced = can_access_advanced_analytics(client)
-        premium = can_access_premium_features(client)
-        print(f"  Advanced: {advanced}, Premium: {premium}")
-        
-        # Тестируем рекомендации
-        recs = generate_subscription_based_recommendations(client)
-        print(f"  Рекомендации ({len(recs)}):")
-        for rec in recs[:2]:
-            print(f"    - {rec}")
-
-# Пример использования
-if __name__ == "__main__":
-    # Инициализация базы данных
-    db = PortfolioDatabase()
-    
-    # Тестируем подписки
-    test_subscriptions()
-    
-    print("\n" + "="*50)
-    print("Демо-портфели:")
-    portfolios = get_all_portfolios()
-    for name, description in portfolios:
-        print(f"- {name}: {description}")
-    
-    print("\nДетали агрессивного портфеля:")
-    aggressive = get_portfolio("агрессивный")
-    if aggressive:
-        for ticker, weight in aggressive.items():
-            print(f"  {ticker}: {weight:.1%}")
 
 
 
